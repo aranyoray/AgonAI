@@ -2,32 +2,7 @@
   "functions": {
     "api/**/*.{js,ts}": {
       "runtime": "edge",
-      "excludeFiles": [
-        "agents/**",
-        "debates/**",
-        "consensus/**",
-        "utils/**",
-        "examples/**",
-        "data/**",
-        "**/*.md",
-        "**/*.ipynb",
-        "**/*.pdf",
-        "**/*.png",
-        "**/*.jpg",
-        "**/*.jpeg",
-        "**/*.gif",
-        "**/*.webp",
-        "**/*.csv",
-        "**/*.tsv",
-        "**/*.zip",
-        "**/*.tar",
-        "**/*.gz",
-        "**/*.7z",
-        "venv/**",
-        "__pycache__/**",
-        "**/*.py",
-        "requirements.txt"
-      ]
+      "excludeFiles": "agents/**,debates/**,consensus/**,utils/**,examples/**,data/**,**/*.md,**/*.ipynb,**/*.pdf,**/*.png,**/*.jpg,**/*.jpeg,**/*.gif,**/*.webp,**/*.csv,**/*.tsv,**/*.zip,**/*.tar,**/*.gz,**/*.7z,venv/**,__pycache__/**,**/*.py,requirements.txt"
     }
   },
   "ignoreCommand": "echo using .vercelignore",

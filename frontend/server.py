@@ -8,6 +8,7 @@ import json
 from agents import HitlerAgent, GandhiAgent, JinnahAgent
 from debates import DebateSimulator
 from utils.ollama_client import OllamaClient
+from utils.memory_clients import SuperMemoryClient, ExaContextClient
 
 app = FastAPI(title="AI Political Agents Frontend")
 
@@ -16,7 +17,11 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
-def create_agent(agent_name: str, llm_client: Optional[OllamaClient] = None):
+def create_agent(
+    agent_name: str,
+    llm_client: Optional[OllamaClient] = None,
+    memory_client: Optional[SuperMemoryClient] = None,
+):
     agents = {
         "hitler": HitlerAgent,
         "gandhi": GandhiAgent,
@@ -25,7 +30,7 @@ def create_agent(agent_name: str, llm_client: Optional[OllamaClient] = None):
     key = agent_name.lower()
     if key not in agents:
         raise ValueError(f"Unknown agent: {agent_name}. Available: {list(agents.keys())}")
-    return agents[key](llm_client=llm_client)
+    return agents[key](llm_client=llm_client, memory_client=memory_client)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -52,11 +57,13 @@ async def simulate(request: Request) -> JSONResponse:
         return JSONResponse({"error": "Topic is required"}, status_code=400)
 
     ollama_client: Optional[OllamaClient] = None
+    memory_client = SuperMemoryClient()
+    exa_client = ExaContextClient()
     if use_ollama:
         ollama_client = OllamaClient(base_url=base_url, model=model)
 
     # Build agents
-    agents = [create_agent(name, llm_client=ollama_client) for name in agent_names]
+    agents = [create_agent(name, llm_client=ollama_client, memory_client=memory_client) for name in agent_names]
 
     # Run debate
     simulator = DebateSimulator(max_rounds=rounds, consensus_threshold=0.7)
@@ -67,7 +74,10 @@ async def simulate(request: Request) -> JSONResponse:
             "historical_period": "1940s",
             "context": "High-stakes political negotiation",
             "stakes": "Critical - involves national interests and survival",
-            "use_llm": bool(ollama_client is not None)
+            "use_llm": bool(ollama_client is not None),
+            "memory_provider": "supermemory",
+            "context_provider": "exa",
+            "context_briefing": exa_client.fetch_context(topic),
         }
     )
 
@@ -83,6 +93,8 @@ async def simulate(request: Request) -> JSONResponse:
         "usedOllama": bool(ollama_client is not None),
         "model": model or os.environ.get("OLLAMA_MODEL")
     }
+    payload["majorityVote"] = result.majority_vote
+    payload["finalResolution"] = result.final_resolution
     if not summary_only:
         payload["transcript"] = simulator.get_debate_transcript()
 

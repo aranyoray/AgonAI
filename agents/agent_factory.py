@@ -21,9 +21,10 @@ class GenericAgent(HistoricalAgent):
         speaking_style: str = "formal",
         response_templates: Optional[Dict[str, str]] = None,
         red_lines: Optional[List[str]] = None,
-        llm_client: Any = None
+        llm_client: Any = None,
+        memory_client: Any = None,
     ):
-        super().__init__(name, ideology, personality, context, llm_client)
+        super().__init__(name, ideology, personality, context, llm_client, memory_client)
         self.speaking_style = speaking_style
         self.response_templates = response_templates or {}
         self.red_lines = red_lines or []

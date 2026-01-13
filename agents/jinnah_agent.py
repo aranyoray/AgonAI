@@ -11,7 +11,7 @@ class JinnahAgent(HistoricalAgent):
     AI agent representing Muhammad Ali Jinnah with Muslim nationalism ideology.
     """
     
-    def __init__(self, llm_client=None):
+    def __init__(self, llm_client=None, memory_client=None):
         personality = PersonalityTraits(
             assertiveness=0.8,
             cooperativeness=0.6,
@@ -43,7 +43,8 @@ class JinnahAgent(HistoricalAgent):
             ideology=Ideology.MUSLIM_NATIONALISM,
             personality=personality,
             context=context,
-            llm_client=llm_client
+            llm_client=llm_client,
+            memory_client=memory_client
         )
         
         # Jinnah's non-negotiable positions
@@ -143,7 +144,7 @@ class JinnahAgent(HistoricalAgent):
             future of both India and Pakistan depends on our ability to resolve 
             this issue amicably."""
         note = self.compromise_note()
-        return out + note
+        return out + note + self.memory_footer(debate_context)
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""
