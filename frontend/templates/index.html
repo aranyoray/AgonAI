@@ -8,9 +8,65 @@
   </head>
   <body>
     <div class="container">
-      <h1>AI Political Agents - Debate Simulator</h1>
+      <header class="hero">
+        <div class="hero-copy">
+          <h1>AgonAI: Political Agent Consensus Lab</h1>
+          <p>
+            Explore empathy-weighted negotiations between historically adversarial personas. Hover over a
+            chatbot on the world map to see their origin, role, and bio, then add them to a debate run.
+          </p>
+          <div class="hero-actions">
+            <button class="secondary" id="jumpToConfig">Configure Debate</button>
+          </div>
+        </div>
+        <section class="map-panel" aria-label="World map with chatbot agents">
+          <div class="map-stage">
+            <svg class="world-map" viewBox="0 0 900 450" role="img" aria-label="Stylized world map">
+              <path d="M67 146l70-34 51 16 22 36-16 44-52 20-58-16-17-36z" />
+              <path d="M248 122l80-28 78 18 34 38-10 44-60 28-78-10-52-44z" />
+              <path d="M408 188l68-22 76 12 46 40-8 36-70 30-72-12-36-34z" />
+              <path d="M552 132l70-26 86 20 40 38-12 42-70 30-84-14-30-40z" />
+              <path d="M610 244l96-28 76 10 46 40-18 46-88 30-72-12-40-36z" />
+              <path d="M120 268l68-24 76 14 40 32-12 40-78 28-72-14-22-32z" />
+            </svg>
+            <button class="agent-marker" data-agent="hitler" style="left: 47%; top: 35%;">
+              <span class="avatar avatar-hitler">AH</span>
+            </button>
+            <button class="agent-marker" data-agent="gandhi" style="left: 63%; top: 46%;">
+              <span class="avatar avatar-gandhi">MG</span>
+            </button>
+            <button class="agent-marker" data-agent="jinnah" style="left: 66%; top: 42%;">
+              <span class="avatar avatar-jinnah">MJ</span>
+            </button>
+            <div class="map-legend">
+              <span class="legend-pill">Hover to zoom + view bio</span>
+              <span class="legend-pill">Click to add to debate</span>
+            </div>
+          </div>
+          <aside class="agent-profile" id="agentProfile">
+            <div class="agent-header">
+              <span class="avatar avatar-hitler" id="profileAvatar">AH</span>
+              <div>
+                <h3 id="profileName">Select an agent</h3>
+                <p id="profileOrigin">Origin: —</p>
+              </div>
+            </div>
+            <p id="profileBio">
+              Hover over a chatbot marker to view their background and negotiation persona.
+            </p>
+            <div class="profile-tags" id="profileTags"></div>
+            <div class="profile-actions">
+              <button id="addToDebate" disabled>Add to Debate</button>
+              <button class="secondary" id="focusChat" disabled>Focus Bio Chat</button>
+            </div>
+            <p class="profile-note" id="profileNote">
+              Use “Focus Bio Chat” to prefill the topic with a guided intro prompt.
+            </p>
+          </aside>
+        </section>
+      </header>
 
-      <section class="panel">
+      <section class="panel" id="configPanel">
         <h2>Configuration</h2>
         <div class="form-row">
           <label>Agents:</label>
