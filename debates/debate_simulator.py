@@ -41,6 +41,8 @@ class DebateResult:
     key_disagreements: List[str]
     final_positions: Dict[str, Dict[str, Any]]
     duration_minutes: float
+    majority_vote: Dict[str, Any]
+    final_resolution: Optional[Dict[str, Any]]
 
 
 class DebateSimulator:
@@ -48,9 +50,10 @@ class DebateSimulator:
     Simulates debates between historical figure AI agents.
     """
     
-    def __init__(self, max_rounds: int = 20, consensus_threshold: float = 0.8):
+    def __init__(self, max_rounds: int = 20, consensus_threshold: float = 0.8, memory_window: int = 8):
         self.max_rounds = max_rounds
         self.consensus_threshold = consensus_threshold
+        self.memory_window = memory_window
         self.debate_history: List[DebateRound] = []
         
     def debate(
@@ -77,6 +80,9 @@ class DebateSimulator:
         for round_num in range(self.max_rounds):
             # Determine current speaker (rotate through agents)
             current_speaker = agents[round_num % len(agents)]
+
+            current_context["memory_summary"] = current_speaker.get_memory_summary()
+            current_context["shared_memory"] = self._get_shared_memory_summary()
             
             # Generate response
             response = current_speaker.generate_response(
@@ -84,6 +90,8 @@ class DebateSimulator:
                 other_agents=[a for a in agents if a.name != current_speaker.name],
                 debate_context=current_context
             )
+
+            current_speaker.update_position({topic: response})
             
             # Record the round
             round_data = DebateRound(
@@ -186,6 +194,7 @@ class DebateSimulator:
         final_positions = {
             agent.name: agent.current_position for agent in agents
         }
+        majority_vote, final_resolution = self._conduct_majority_vote(agents)
         
         return DebateResult(
             status=status,
@@ -194,8 +203,70 @@ class DebateSimulator:
             key_agreements=agreements,
             key_disagreements=disagreements,
             final_positions=final_positions,
-            duration_minutes=duration
+            duration_minutes=duration,
+            majority_vote=majority_vote,
+            final_resolution=final_resolution
         )
+
+    def _get_shared_memory_summary(self) -> str:
+        recent = self.debate_history[-self.memory_window:]
+        if not recent:
+            return "No shared memory yet."
+        lines = []
+        for round_data in recent:
+            snippet = round_data.response.replace("\n", " ").strip()
+            if len(snippet) > 120:
+                snippet = snippet[:117].rstrip() + "..."
+            lines.append(f"- {round_data.speaker}: {snippet}")
+        return "\n".join(lines)
+
+    def _conduct_majority_vote(self, agents: List[HistoricalAgent]) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        proposals = []
+        for agent in agents:
+            if not agent.current_position:
+                continue
+            for topic, position in agent.current_position.items():
+                proposals.append({"proposer": agent.name, "topic": topic, "proposal": position})
+
+        if not proposals:
+            return {"proposals": [], "majorityNeeded": len(agents) // 2 + 1}, None
+
+        majority_needed = len(agents) // 2 + 1
+        vote_results = []
+        accepted = []
+
+        agent_map = {agent.name: agent for agent in agents}
+        for proposal in proposals:
+            proposer = agent_map.get(proposal["proposer"])
+            votes = []
+            accept_count = 0
+            for agent in agents:
+                evaluation = agent.evaluate_proposal(proposal["proposal"], proposer)
+                votes.append(
+                    {
+                        "voter": agent.name,
+                        "accept": evaluation["accept"],
+                        "reasoning": evaluation["reasoning"],
+                    }
+                )
+                if evaluation["accept"]:
+                    accept_count += 1
+            outcome = {
+                "proposal": proposal,
+                "acceptCount": accept_count,
+                "votes": votes,
+                "passed": accept_count >= majority_needed,
+            }
+            vote_results.append(outcome)
+            if outcome["passed"]:
+                accepted.append(proposal)
+
+        final_resolution = accepted[0] if accepted else None
+        return {
+            "proposals": vote_results,
+            "majorityNeeded": majority_needed,
+            "acceptedCount": len(accepted),
+        }, final_resolution
     
     def _analyze_positions(self, agents: List[HistoricalAgent]) -> Tuple[List[str], List[str]]:
         """Analyze agent positions to find agreements and disagreements."""

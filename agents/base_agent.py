@@ -56,13 +56,15 @@ class HistoricalAgent(ABC):
         ideology: Ideology,
         personality: PersonalityTraits,
         context: HistoricalContext,
-        llm_client: Any = None
+        llm_client: Any = None,
+        memory_client: Any = None,
     ):
         self.name = name
         self.ideology = ideology
         self.personality = personality
         self.context = context
         self.llm_client = llm_client
+        self.memory_client = memory_client
         self.conversation_history: List[Dict[str, Any]] = []
         self.current_position: Dict[str, Any] = {}
         self.red_lines: List[str] = []  # Non-negotiable positions
@@ -103,6 +105,13 @@ class HistoricalAgent(ABC):
             'context': context,
             'timestamp': len(self.conversation_history)
         })
+        if self.memory_client:
+            self.memory_client.record_event(
+                agent_name=self.name,
+                speaker=speaker,
+                content=content,
+                metadata=context,
+            )
     
     def get_personality_prompt(self) -> str:
         """Generate a personality prompt for the LLM."""
@@ -132,11 +141,27 @@ class HistoricalAgent(ABC):
         {', '.join(self.red_lines) if self.red_lines else 'None specified'}
         
         Current Position: {json.dumps(self.current_position, indent=2)}
+
+        Recent Memory:
+        {self.get_memory_summary()}
         
         Respond as this historical figure would, staying true to their personality,
         ideology, and historical context. Be authentic to their speaking style
         and decision-making patterns.
         """
+
+    def get_memory_summary(self) -> str:
+        """Provide a short memory summary for this agent."""
+        if not self.memory_client:
+            return "Memory service not configured."
+        return self.memory_client.summarize_recent(self.name)
+
+    def memory_footer(self, debate_context: Dict[str, Any]) -> str:
+        """Optional memory recap appended to non-LLM responses."""
+        summary = debate_context.get("memory_summary")
+        if not summary:
+            return ""
+        return f"\n\nMemory recap:\n{summary}"
 
     def generate_llm_response(self, topic: str, debate_context: Dict[str, Any]) -> Optional[str]:
         """If llm_client is configured and use_llm is True, generate using LLM."""

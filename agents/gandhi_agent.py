@@ -11,7 +11,7 @@ class GandhiAgent(HistoricalAgent):
     AI agent representing Mahatma Gandhi with non-violence ideology.
     """
     
-    def __init__(self, llm_client=None):
+    def __init__(self, llm_client=None, memory_client=None):
         personality = PersonalityTraits(
             assertiveness=0.7,
             cooperativeness=0.95,
@@ -44,7 +44,8 @@ class GandhiAgent(HistoricalAgent):
             ideology=Ideology.NONVIOLENCE,
             personality=personality,
             context=context,
-            llm_client=llm_client
+            llm_client=llm_client,
+            memory_client=memory_client
         )
         
         # Gandhi's non-negotiable positions
@@ -135,7 +136,7 @@ class GandhiAgent(HistoricalAgent):
             and non-violence can achieve what force and violence cannot. The future 
             of humanity depends on our willingness to try."""
         note = self.compromise_note()
-        return out + note
+        return out + note + self.memory_footer(debate_context)
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""
