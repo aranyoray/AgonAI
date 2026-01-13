@@ -1,0 +1,9 @@
+.container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+.panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+h1 { margin-bottom: 1rem; }
+.form-row { display: flex; align-items: center; gap: 1rem; margin: .5rem 0; }
+.form-row label { min-width: 100px; }
+.agents { display: flex; gap: 1rem; flex-wrap: wrap; }
+button { background: #2563eb; color: white; border: 0; border-radius: 6px; padding: .5rem 1rem; cursor: pointer; }
+button:hover { background: #1d4ed8; }
+.code { background: #0b1021; color: #d1e7ff; padding: 1rem; border-radius: 6px; overflow: auto; max-height: 480px; }

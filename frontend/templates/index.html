@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Political Agents - Simulator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>AI Political Agents - Debate Simulator</h1>
+
+      <section class="panel">
+        <h2>Configuration</h2>
+        <div class="form-row">
+          <label>Agents:</label>
+          <div class="agents">
+            <label><input type="checkbox" class="agent" value="hitler" checked /> Hitler</label>
+            <label><input type="checkbox" class="agent" value="gandhi" checked /> Gandhi</label>
+            <label><input type="checkbox" class="agent" value="jinnah" checked /> Jinnah</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="topic">Topic:</label>
+          <input id="topic" type="text" placeholder="territorial_disputes" value="territorial_disputes" />
+        </div>
+        <div class="form-row">
+          <label for="rounds">Rounds:</label>
+          <input id="rounds" type="number" min="3" max="30" value="12" />
+        </div>
+        <div class="form-row">
+          <label><input id="summaryOnly" type="checkbox" checked /> Summary only</label>
+        </div>
+        <div class="form-row">
+          <label><input id="useOllama" type="checkbox" /> Use Ollama</label>
+          <input id="baseUrl" type="text" placeholder="http://localhost:11434" style="flex:1" />
+          <input id="model" type="text" placeholder="llama3.1:8b" style="flex:1" />
+        </div>
+        <div class="form-row">
+          <button id="runBtn">Run Debate</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Results</h2>
+        <pre id="results" class="code"></pre>
+      </section>
+    </div>
+
+    <script src="/static/main.js"></script>
+  </body>
+</html>

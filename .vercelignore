@@ -1,0 +1,49 @@
+# Exclude Python project files and large directories from Vercel upload
+
+# Python
+__pycache__/**
+*.pyc
+*.pyo
+*.pyd
+*.so
+venv/**
+.env
+.env.*
+
+# Project-specific large/irrelevant directories for Vercel
+agents/**
+debates/**
+consensus/**
+utils/**
+examples/**
+data/**
+
+# Not needed for Vercel deployment
+requirements.txt
+*.ipynb
+*.md
+*.pdf
+*.csv
+*.tsv
+*.xlsx
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+*.mov
+*.zip
+*.tar
+*.gz
+*.7z
+
+# Node caches (in case present)
+node_modules/**
+
+# Build artifacts
+.vercel/output/**
+dist/**
+build/**
+.next/**
+out/**
