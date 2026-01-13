@@ -1,9 +1,87 @@
-.container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-.panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-h1 { margin-bottom: 1rem; }
+body {
+  margin: 0;
+  background: #f5f7fb;
+  color: #0f172a;
+  font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.container { max-width: 1080px; margin: 2rem auto 3rem; padding: 0 1.5rem; }
+.panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); }
+h1 { margin: 0 0 1rem; font-size: 2.4rem; }
+h2 { margin-top: 0; }
+p { line-height: 1.6; }
+.hero { display: grid; gap: 2rem; margin-bottom: 2rem; }
+.hero-copy { display: flex; flex-direction: column; gap: 1rem; }
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+.map-panel { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
+.map-stage {
+  position: relative;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border-radius: 18px;
+  padding: 1.5rem;
+  min-height: 360px;
+  overflow: hidden;
+}
+.world-map { width: 100%; height: auto; fill: rgba(255, 255, 255, 0.14); }
+.agent-marker {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.agent-marker:hover,
+.agent-marker:focus-visible {
+  transform: translate(-50%, -50%) scale(1.15);
+  filter: drop-shadow(0 0 16px rgba(59, 130, 246, 0.6));
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+.avatar-hitler { background: linear-gradient(135deg, #e11d48, #7f1d1d); }
+.avatar-gandhi { background: linear-gradient(135deg, #22c55e, #15803d); }
+.avatar-jinnah { background: linear-gradient(135deg, #38bdf8, #0ea5e9); }
+.map-legend { position: absolute; bottom: 16px; left: 16px; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.legend-pill {
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.agent-profile { background: #fff; border-radius: 14px; padding: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); }
+.agent-header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+.agent-header h3 { margin: 0; }
+.profile-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.profile-tags span {
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.profile-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.profile-note { margin-top: 0.75rem; color: #64748b; font-size: 0.85rem; }
 .form-row { display: flex; align-items: center; gap: 1rem; margin: .5rem 0; }
-.form-row label { min-width: 100px; }
+.form-row label { min-width: 120px; }
 .agents { display: flex; gap: 1rem; flex-wrap: wrap; }
-button { background: #2563eb; color: white; border: 0; border-radius: 6px; padding: .5rem 1rem; cursor: pointer; }
+button { background: #2563eb; color: white; border: 0; border-radius: 999px; padding: .55rem 1.2rem; cursor: pointer; font-weight: 600; }
 button:hover { background: #1d4ed8; }
-.code { background: #0b1021; color: #d1e7ff; padding: 1rem; border-radius: 6px; overflow: auto; max-height: 480px; }
+button.secondary { background: #e2e8f0; color: #0f172a; }
+button.secondary:hover { background: #cbd5f5; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.code { background: #0b1021; color: #d1e7ff; padding: 1rem; border-radius: 12px; overflow: auto; max-height: 480px; }
+@media (max-width: 900px) {
+  .map-panel { grid-template-columns: 1fr; }
+  .map-stage { min-height: 320px; }
+}
