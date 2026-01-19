@@ -169,12 +169,34 @@ class HistoricalAgent(ABC):
             return None
         if not debate_context.get("use_llm"):
             return None
-        system = f"Act strictly as {self.name} based on the system prompt. Keep responses on-topic and concise."
-        prompt = self.get_personality_prompt() + f"\n\nTopic: {topic}\nYour response:"
+        system = (
+            f"Act strictly as {self.name} based on the system prompt. "
+            "Keep responses on-topic, concise, and grounded in the provided conversation context. "
+            "You must read the conversation summary and last turns before answering. "
+            "Avoid repeating prior responses; if repeating, acknowledge and add new value. "
+            "Be consensus-seeking: restate the user's goal in one line and propose next steps."
+        )
+        conversation_context = debate_context.get("conversation_context")
+        response_plan = debate_context.get("response_plan")
+        prompt = self.get_personality_prompt()
+        if conversation_context:
+            prompt += "\n\nConversation Context (summary, last turns, salience, open loops, metrics):\n"
+            prompt += json.dumps(conversation_context, indent=2)
+        if response_plan:
+            prompt += "\n\nResponse Plan:\n"
+            prompt += json.dumps(response_plan, indent=2)
+        prompt += f"\n\nTopic: {topic}\nYour response:"
         try:
-            return self.llm_client.generate(prompt=prompt, system=system)
+            response = self.llm_client.generate(prompt=prompt, system=system)
         except Exception:
             return None
+        state = debate_context.get("conversation_state")
+        if state and state.is_repetitive(response, role=self.name):
+            response = (
+                f"{response}\n\nAs noted earlier, I will not repeat myself. "
+                f"Next step: propose one concrete action to advance {topic}."
+            )
+        return response
 
     # ============== Compromise helpers ==============
     def willingness_to_compromise(self) -> float:

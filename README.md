@@ -44,6 +44,22 @@ python3 main.py --agents hitler gandhi jinnah --topic territorial_disputes --rou
   - `export OLLAMA_MODEL=llama3.1:8b`
 - In FastAPI UI, check "Use Ollama" and optionally set base URL/model.
 
+## Grok (xAI) Chat API (Serverless)
+- Vercel route: `POST /api/chat`
+- Required env: `XAI_API_KEY` (or `GROK_API_KEY`)
+- Optional tuning:
+  - `XAI_BASE_URL` (default `https://api.x.ai/v1`)
+  - `CHAT_CACHE_TTL_S` (default 120 seconds)
+  - `CHAT_CACHE_MAX_ITEMS` (default 256)
+
+## Conversation Memory (Chat Continuity)
+- The simulator keeps a short-term memory window (default: 8 turns) plus a rolling summary.
+- It tracks salient user preferences, open loops, and consensus metrics to keep replies coherent.
+- Tuning knobs (see `utils/conversation_state.py`):
+  - `memory_window` (default 8)
+  - `compromise_threshold` (default 0.7)
+  - `weights` for consensus scoring
+
 ## Run Local Frontend (FastAPI)
 ```bash
 uvicorn frontend.server:app --reload
