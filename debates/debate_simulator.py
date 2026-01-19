@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 
 from agents.base_agent import HistoricalAgent
+from utils.conversation_state import ConversationState, plan_response
 
 
 class DebateStatus(Enum):
@@ -55,6 +56,7 @@ class DebateSimulator:
         self.consensus_threshold = consensus_threshold
         self.memory_window = memory_window
         self.debate_history: List[DebateRound] = []
+        self.conversation_state: Optional[ConversationState] = None
         
     def debate(
         self, 
@@ -71,15 +73,29 @@ class DebateSimulator:
         start_time = time.time()
         self.debate_history = []
         current_context = initial_context or {}
+        self.conversation_state = current_context.get("conversation_state")
         
         # Initialize positions
         for agent in agents:
             agent.current_position = agent.current_position.copy()
         
         # Debate loop
+        if self.conversation_state and not self.conversation_state.turns:
+            self.conversation_state.append_turn("system", f"Debate topic: {topic}")
+            self.conversation_state.update_summary()
+            self.conversation_state.extract_salience_and_open_loops()
+            self.conversation_state.update_metrics()
         for round_num in range(self.max_rounds):
             # Determine current speaker (rotate through agents)
             current_speaker = agents[round_num % len(agents)]
+
+            if self.conversation_state:
+                current_context["conversation_context"] = self.conversation_state.build_prompt_context()
+                current_context["response_plan"] = plan_response(
+                    self.conversation_state,
+                    last_user_message=None,
+                ).__dict__
+                current_context["conversation_state"] = self.conversation_state
 
             current_context["memory_summary"] = current_speaker.get_memory_summary()
             current_context["shared_memory"] = self._get_shared_memory_summary()
@@ -111,6 +127,11 @@ class DebateSimulator:
                     content=response,
                     context=current_context
                 )
+            if self.conversation_state:
+                self.conversation_state.append_turn(current_speaker.name, response)
+                self.conversation_state.update_summary()
+                self.conversation_state.extract_salience_and_open_loops()
+                self.conversation_state.update_metrics()
             
             # Check for consensus
             consensus_score = self._calculate_consensus_score(agents)
