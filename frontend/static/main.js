@@ -7,6 +7,7 @@ async function runSimulation() {
   const useOllama = document.getElementById('useOllama').checked;
   const baseUrl = document.getElementById('baseUrl').value.trim() || undefined;
   const model = document.getElementById('model').value.trim() || undefined;
+  const sessionId = window.localStorage.getItem('sessionId') || undefined;
 
   const resultsEl = document.getElementById('results');
   resultsEl.textContent = 'Running...';
@@ -15,7 +16,7 @@ async function runSimulation() {
     const resp = await fetch('/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agents, topic, rounds, summaryOnly, useOllama, baseUrl, model })
+      body: JSON.stringify({ agents, topic, rounds, summaryOnly, useOllama, baseUrl, model, sessionId })
     });
 
     const data = await resp.json();
@@ -24,6 +25,9 @@ async function runSimulation() {
       return;
     }
 
+    if (data.sessionId) {
+      window.localStorage.setItem('sessionId', data.sessionId);
+    }
     resultsEl.textContent = JSON.stringify(data, null, 2);
   } catch (err) {
     resultsEl.textContent = String(err);
