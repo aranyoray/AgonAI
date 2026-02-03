@@ -44,9 +44,10 @@ python3 main.py --agents hitler gandhi jinnah --topic territorial_disputes --rou
   - `export OLLAMA_MODEL=llama3.1:8b`
 - In FastAPI UI, check "Use Ollama" and optionally set base URL/model.
 
-## Grok (xAI) Chat API (Serverless)
+## Chat API (Serverless)
 - Vercel route: `POST /api/chat`
-- Required env: `XAI_API_KEY` (or `GROK_API_KEY`)
+- Recommended env (Gemini): `GOOGLE_CLOUD_API_KEY`
+- Legacy env (xAI/Grok, no longer default): `XAI_API_KEY` or `GROK_API_KEY`
 - Optional tuning:
   - `XAI_BASE_URL` (default `https://api.x.ai/v1`)
   - `CHAT_CACHE_TTL_S` (default 120 seconds)
