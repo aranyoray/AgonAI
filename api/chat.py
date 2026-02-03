@@ -3,12 +3,16 @@ import json
 import os
 import time
 from http.server import BaseHTTPRequestHandler
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import requests
 
-XAI_BASE_URL = os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
-XAI_API_KEY = os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY")
+# Gemini / Google Generative Language API configuration
+GEMINI_BASE_URL = os.getenv(
+    "GEMINI_BASE_URL",
+    "https://generativelanguage.googleapis.com/v1beta",
+)
+GEMINI_API_KEY = os.getenv("GOOGLE_CLOUD_API_KEY")
 CACHE_TTL_S = int(os.getenv("CHAT_CACHE_TTL_S", "120"))
 CACHE_MAX_ITEMS = int(os.getenv("CHAT_CACHE_MAX_ITEMS", "256"))
 
@@ -20,7 +24,7 @@ def _cache_key(payload: Dict[str, Any]) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _cache_get(key: str) -> Dict[str, Any] | None:
+def _cache_get(key: str) -> Optional[Dict[str, Any]]:
     now = time.time()
     entry = _CACHE.get(key)
     if not entry:
@@ -37,6 +41,24 @@ def _cache_set(key: str, value: Dict[str, Any]) -> None:
         oldest_key = min(_CACHE.items(), key=lambda item: item[1][0])[0]
         _CACHE.pop(oldest_key, None)
     _CACHE[key] = (time.time(), value)
+
+
+def _to_gemini_contents(messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+    """Convert internal chat message format into Gemini 'contents' format."""
+    contents: List[Dict[str, Any]] = []
+    for m in messages:
+        text = m.get("content", "")
+        if not text:
+            continue
+        role = m.get("role", "user").lower()
+        gem_role = "model" if role in ("assistant", "model") else "user"
+        contents.append(
+            {
+                "role": gem_role,
+                "parts": [{"text": text}],
+            }
+        )
+    return contents
 
 
 def _extract_messages(body: Dict[str, Any]) -> List[Dict[str, str]]:
@@ -66,8 +88,8 @@ class handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "Invalid JSON body"})
             return
 
-        if not XAI_API_KEY:
-            self._send(500, {"error": "XAI_API_KEY is not configured"})
+        if not GEMINI_API_KEY:
+            self._send(500, {"error": "GOOGLE_CLOUD_API_KEY is not configured"})
             return
 
         messages = _extract_messages(body)
@@ -75,15 +97,18 @@ class handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "messages or prompt is required"})
             return
 
-        model = body.get("model", "grok-2-latest")
+        # Default to a Gemini model; allow override via body["model"]
+        model = body.get("model", "gemini-1.5-flash")
         temperature = float(body.get("temperature", 0.2))
         max_tokens = int(body.get("max_tokens", 512))
 
+        # Build Gemini generateContent payload
         payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
+            "contents": _to_gemini_contents(messages),
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            },
         }
 
         cache_key = _cache_key(payload)
@@ -94,8 +119,8 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             response = requests.post(
-                f"{XAI_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {XAI_API_KEY}"},
+                f"{GEMINI_BASE_URL}/models/{model}:generateContent",
+                params={"key": GEMINI_API_KEY},
                 json=payload,
                 timeout=30,
             )
@@ -106,16 +131,19 @@ class handler(BaseHTTPRequestHandler):
         if response.status_code >= 400:
             self._send(
                 response.status_code,
-                {"error": "XAI API error", "detail": response.text},
+                {"error": "Gemini API error", "detail": response.text},
             )
             return
 
         data = response.json()
-        reply = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
+        # Extract text from Gemini response: candidates[0].content.parts[*].text
+        reply = ""
+        candidates = data.get("candidates") or []
+        if candidates:
+            content = candidates[0].get("content") or {}
+            parts = content.get("parts") or []
+            texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
+            reply = "".join(texts)
         result = {"reply": reply, "model": model}
         _cache_set(cache_key, result)
         self._send(200, result)
