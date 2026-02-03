@@ -1,12 +1,7 @@
 {
   "functions": {
-    "api/**/*.py": {
-      "runtime": "@vercel/python@4.5.0"
+    "api/*.py": {
+      "runtime": "@vercel/python"
     }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ],
-  "buildCommand": "echo no build",
-  "outputDirectory": "."
+  }
 }
