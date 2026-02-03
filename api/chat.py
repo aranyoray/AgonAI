@@ -5,7 +5,11 @@ import time
 from http.server import BaseHTTPRequestHandler
 from typing import Any, Dict, List, Tuple, Optional
 
-import requests
+try:
+    import requests
+except ImportError as e:
+    requests = None
+    _import_error = str(e)
 
 # Gemini / Google Generative Language API configuration
 GEMINI_BASE_URL = os.getenv(
@@ -80,7 +84,17 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_GET(self) -> None:
+        """Health check endpoint."""
+        if requests is None:
+            self._send(500, {"error": "requests library not available", "detail": _import_error})
+            return
+        self._send(200, {"status": "ok", "service": "chat", "api": "gemini"})
+
     def do_POST(self) -> None:
+        if requests is None:
+            self._send(500, {"error": "requests library not available", "detail": _import_error})
+            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             body = json.loads(self.rfile.read(length) or "{}")
