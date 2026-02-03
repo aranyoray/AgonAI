@@ -18,8 +18,7 @@ utils/**
 examples/**
 data/**
 
-# Not needed for Vercel deployment
-requirements.txt
+# Not needed for Vercel deployment (but keep requirements.txt for api/)
 *.ipynb
 *.md
 *.pdf
