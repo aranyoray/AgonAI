@@ -4,9 +4,22 @@ Base class for historical figure AI agents.
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import json
+
+from scoring.policy_scoring import (
+    OCEANTraits,
+    PolicyScores,
+    AgentScorecard,
+    score_proposal,
+    compute_objective,
+    apply_empathy_multiplier,
+    apply_fatigue_penalty,
+    compute_penalty,
+    RegionWeights,
+    REGION_WEIGHTS,
+)
 
 
 class Ideology(Enum):
@@ -33,6 +46,16 @@ class PersonalityTraits:
     pragmatism: float  # 0.0 to 1.0
     idealism: float  # 0.0 to 1.0
 
+    def to_ocean(self) -> OCEANTraits:
+        """Map internal personality traits to Big Five (OCEAN) traits."""
+        return OCEANTraits(
+            openness=self.openness_to_change,
+            conscientiousness=(self.pragmatism + self.emotional_stability) / 2,
+            extraversion=(self.assertiveness + self.charisma) / 2,
+            agreeableness=self.cooperativeness,
+            neuroticism=1.0 - self.emotional_stability,
+        )
+
 
 @dataclass
 class HistoricalContext:
@@ -58,6 +81,9 @@ class HistoricalAgent(ABC):
         context: HistoricalContext,
         llm_client: Any = None,
         memory_client: Any = None,
+        ocean_override: Optional[OCEANTraits] = None,
+        empathy_ratio: Optional[float] = None,
+        region_weights: Optional[RegionWeights] = None,
     ):
         self.name = name
         self.ideology = ideology
@@ -68,6 +94,19 @@ class HistoricalAgent(ABC):
         self.conversation_history: List[Dict[str, Any]] = []
         self.current_position: Dict[str, Any] = {}
         self.red_lines: List[str] = []  # Non-negotiable positions
+
+        # OCEAN personality (derived from traits or overridden)
+        self.ocean: OCEANTraits = ocean_override or personality.to_ocean()
+        # Empathy ratio: how much the agent factors opponent's objective (0=selfish, 1=altruistic)
+        self.empathy_ratio: float = empathy_ratio if empathy_ratio is not None else self.ocean.empathy_score()
+        # Fatigue accumulates over rounds
+        self.fatigue: float = 0.0
+        # Region-specific objective weights
+        self.region_weights: RegionWeights = region_weights or REGION_WEIGHTS["default"]
+        # Scorecard tracks all policy scores across the debate
+        self.scorecard: AgentScorecard = AgentScorecard(agent_name=name)
+        # Personality multiplier derived from historical character traits
+        self.personality_multiplier: float = 1.0
         
     @abstractmethod
     def generate_response(
@@ -197,6 +236,90 @@ class HistoricalAgent(ABC):
                 f"Next step: propose one concrete action to advance {topic}."
             )
         return response
+
+    # ============== Policy scoring helpers ==============
+    def score_round(
+        self,
+        topic: str,
+        round_number: int,
+        max_rounds: int = 20,
+        opponent_objective: float = 0.0,
+        violated_red_lines: int = 0,
+        low_cooperation_rounds: int = 0,
+        repeated_positions: int = 0,
+    ) -> float:
+        """Score this agent's position for the current round.
+
+        Returns the empathy-adjusted objective value for the round.
+        """
+        # Compute policy scores
+        scores = score_proposal(
+            topic=topic,
+            agent_ideology=self.ideology.value,
+            personality_modifier=self.ocean.personality_modifier(),
+            cooperation_level=self.personality.cooperativeness,
+        )
+
+        # Apply personality multiplier (famous-character bonus)
+        scores.political.benefit *= self.personality_multiplier
+        scores.economic.benefit *= self.personality_multiplier
+        scores.social.benefit *= self.personality_multiplier
+
+        # Fatigue
+        self.fatigue = apply_fatigue_penalty(
+            base_fatigue=self.fatigue,
+            round_number=round_number,
+            emotional_stability=self.personality.emotional_stability,
+            max_rounds=max_rounds,
+        )
+
+        # Penalty for bad behavior
+        penalty = compute_penalty(
+            violated_red_lines=violated_red_lines,
+            low_cooperation_rounds=low_cooperation_rounds,
+            repeated_positions=repeated_positions,
+        )
+
+        # Raw objective
+        raw_obj = compute_objective(
+            scores=scores,
+            weights=self.region_weights,
+            fatigue=self.fatigue,
+            penalty=penalty,
+        )
+
+        # Empathy-adjusted objective
+        adjusted = apply_empathy_multiplier(raw_obj, opponent_objective, self.empathy_ratio)
+
+        # Record
+        self.scorecard.rounds_played += 1
+        self.scorecard.round_scores.append(scores)
+        self.scorecard.objective_values.append(adjusted)
+        self.scorecard.fatigue = self.fatigue
+        self.scorecard.penalties += penalty
+        self.scorecard.empathy_bonus += adjusted - raw_obj
+
+        # Update cumulative
+        cs = self.scorecard.cumulative_scores
+        cs.political.benefit = min(100, cs.political.benefit + scores.political.benefit / max_rounds)
+        cs.political.cost = min(100, cs.political.cost + scores.political.cost / max_rounds)
+        cs.economic.benefit = min(100, cs.economic.benefit + scores.economic.benefit / max_rounds)
+        cs.economic.cost = min(100, cs.economic.cost + scores.economic.cost / max_rounds)
+        cs.social.benefit = min(100, cs.social.benefit + scores.social.benefit / max_rounds)
+        cs.social.cost = min(100, cs.social.cost + scores.social.cost / max_rounds)
+
+        return adjusted
+
+    def get_empathy_ratio(self) -> float:
+        return self.empathy_ratio
+
+    def set_empathy_ratio(self, ratio: float) -> None:
+        self.empathy_ratio = max(0.0, min(1.0, ratio))
+
+    def inject_empathy(self, boost: float) -> None:
+        """Increase empathy (for experimental empathy injection)."""
+        self.empathy_ratio = min(1.0, self.empathy_ratio + boost)
+        self.ocean.agreeableness = min(1.0, self.ocean.agreeableness + boost * 0.5)
 
     # ============== Compromise helpers ==============
     def willingness_to_compromise(self) -> float:
