@@ -5,8 +5,15 @@ from typing import List, Dict, Any, Optional
 import os
 import json
 
-from agents import HitlerAgent, GandhiAgent, JinnahAgent
+from agents import (
+    HitlerAgent, GandhiAgent, JinnahAgent,
+    RationalAgent, EmpatheticAgent, JudgeAgent,
+)
 from debates import DebateSimulator
+from debates.experiment_runner import (
+    get_experiment_configs, run_experiment, run_all_experiments,
+    EXPERIMENT_TOPICS,
+)
 from utils.ollama_client import OllamaClient
 from utils.conversation_state import InMemoryConversationStore, load_state
 from utils.memory_clients import SuperMemoryClient, ExaContextClient
@@ -19,20 +26,26 @@ static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
+AGENT_REGISTRY: Dict[str, Any] = {
+    "hitler": HitlerAgent,
+    "gandhi": GandhiAgent,
+    "jinnah": JinnahAgent,
+    "rational": lambda **kw: RationalAgent(**kw),
+    "empathetic": lambda **kw: EmpatheticAgent(**kw),
+}
+
+
 def create_agent(
     agent_name: str,
     llm_client: Optional[OllamaClient] = None,
     memory_client: Optional[SuperMemoryClient] = None,
 ):
-    agents = {
-        "hitler": HitlerAgent,
-        "gandhi": GandhiAgent,
-        "jinnah": JinnahAgent,
-    }
     key = agent_name.lower()
-    if key not in agents:
-        raise ValueError(f"Unknown agent: {agent_name}. Available: {list(agents.keys())}")
-    return agents[key](llm_client=llm_client, memory_client=memory_client)
+    if key in ("rational", "empathetic"):
+        return AGENT_REGISTRY[key](llm_client=llm_client, memory_client=memory_client)
+    if key not in AGENT_REGISTRY:
+        raise ValueError(f"Unknown agent: {agent_name}. Available: {list(AGENT_REGISTRY.keys())}")
+    return AGENT_REGISTRY[key](llm_client=llm_client, memory_client=memory_client)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -85,8 +98,33 @@ async def simulate(request: Request) -> JSONResponse:
             "context_provider": "exa",
             "context_briefing": exa_client.fetch_context(topic),
             "conversation_state": conversation_state,
+            "policy_scoring": True,
         }
     )
+
+    # Score each round
+    for round_num, rd in enumerate(result.rounds):
+        speaker = next((a for a in agents if a.name == rd.speaker), None)
+        if speaker:
+            opponent_obj = 0.0
+            for other in agents:
+                if other.name != speaker.name and other.scorecard.objective_values:
+                    opponent_obj = other.scorecard.objective_values[-1]
+            speaker.score_round(
+                topic=topic,
+                round_number=round_num + 1,
+                max_rounds=rounds,
+                opponent_objective=opponent_obj,
+            )
+
+    # Build transcript with chat messages
+    chat_messages = []
+    for rd in result.rounds:
+        chat_messages.append({
+            "round": rd.round_number,
+            "speaker": rd.speaker,
+            "content": rd.response.strip(),
+        })
 
     payload: Dict[str, Any] = {
         "agents": agent_names,
@@ -100,6 +138,10 @@ async def simulate(request: Request) -> JSONResponse:
         "usedOllama": bool(ollama_client is not None),
         "model": model or os.environ.get("OLLAMA_MODEL"),
         "sessionId": conversation_state.session_id,
+        "chatMessages": chat_messages,
+        "policyScores": {a.name: a.scorecard.as_dict() for a in agents},
+        "empathyRatios": {a.name: round(a.empathy_ratio, 3) for a in agents},
+        "oceanTraits": {a.name: a.ocean.as_dict() for a in agents},
     }
     payload["majorityVote"] = result.majority_vote
     payload["finalResolution"] = result.final_resolution
@@ -107,3 +149,51 @@ async def simulate(request: Request) -> JSONResponse:
         payload["transcript"] = simulator.get_debate_transcript()
 
     return JSONResponse(payload)
+
+
+@app.post("/experiment")
+async def run_experiment_endpoint(request: Request) -> JSONResponse:
+    """Run one of the 8 pre-configured experiments."""
+    body = await request.json()
+    experiment_id: int = int(body.get("experimentId", 1))
+    topic: str = body.get("topic", "war")
+    max_rounds: int = int(body.get("maxRounds", 15))
+
+    # Build historical agents if needed (for experiments 5-8)
+    historical_agents = None
+    hist_names = body.get("historicalAgents", [])
+    if len(hist_names) >= 2:
+        historical_agents = [create_agent(n) for n in hist_names[:2]]
+
+    configs = get_experiment_configs(
+        topic=topic,
+        historical_agents=historical_agents,
+        max_rounds=max_rounds,
+    )
+
+    # Select the requested experiment (1-indexed)
+    idx = max(0, min(experiment_id - 1, len(configs) - 1))
+    if idx >= len(configs):
+        return JSONResponse({"error": f"Experiment {experiment_id} not available"}, status_code=400)
+
+    result = run_experiment(configs[idx])
+    return JSONResponse(result.as_dict())
+
+
+@app.get("/experiments/list")
+async def list_experiments() -> JSONResponse:
+    """List available experiments and topics."""
+    return JSONResponse({
+        "experiments": [
+            {"id": 1, "name": "Rational vs Rational", "needsHistorical": False},
+            {"id": 2, "name": "Empathetic vs Empathetic", "needsHistorical": False},
+            {"id": 3, "name": "Rational vs Empathetic", "needsHistorical": False},
+            {"id": 4, "name": "Low Empathy vs High Empathy", "needsHistorical": False},
+            {"id": 5, "name": "Historical Conflict", "needsHistorical": True},
+            {"id": 6, "name": "Historical + Empathy Injection", "needsHistorical": True},
+            {"id": 7, "name": "Historical + Judge", "needsHistorical": True},
+            {"id": 8, "name": "Full Pipeline", "needsHistorical": True},
+        ],
+        "topics": EXPERIMENT_TOPICS,
+        "agents": list(AGENT_REGISTRY.keys()),
+    })

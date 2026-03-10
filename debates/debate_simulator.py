@@ -44,6 +44,7 @@ class DebateResult:
     duration_minutes: float
     majority_vote: Dict[str, Any]
     final_resolution: Optional[Dict[str, Any]]
+    policy_scorecards: Optional[Dict[str, Any]] = None
 
 
 class DebateSimulator:
@@ -217,6 +218,12 @@ class DebateSimulator:
         }
         majority_vote, final_resolution = self._conduct_majority_vote(agents)
         
+        # Collect policy scorecards if agents have them
+        policy_scorecards = {}
+        for agent in agents:
+            if hasattr(agent, "scorecard") and agent.scorecard.rounds_played > 0:
+                policy_scorecards[agent.name] = agent.scorecard.as_dict()
+
         return DebateResult(
             status=status,
             rounds=self.debate_history.copy(),
@@ -226,7 +233,8 @@ class DebateSimulator:
             final_positions=final_positions,
             duration_minutes=duration,
             majority_vote=majority_vote,
-            final_resolution=final_resolution
+            final_resolution=final_resolution,
+            policy_scorecards=policy_scorecards if policy_scorecards else None,
         )
 
     def _get_shared_memory_summary(self) -> str:
