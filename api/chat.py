@@ -68,7 +68,17 @@ def _to_gemini_contents(messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
 def _extract_messages(body: Dict[str, Any]) -> List[Dict[str, str]]:
     messages = body.get("messages")
     if isinstance(messages, list) and messages:
-        return [{"role": m.get("role", "user"), "content": m.get("content", "")} for m in messages]
+        cleaned: List[Dict[str, str]] = []
+        for m in messages:
+            if not isinstance(m, dict):
+                continue
+            cleaned.append(
+                {
+                    "role": str(m.get("role", "user")),
+                    "content": "" if m.get("content") is None else str(m.get("content", "")),
+                }
+            )
+        return cleaned
     prompt = body.get("prompt") or body.get("message")
     if prompt:
         return [{"role": "user", "content": str(prompt)}]
@@ -76,13 +86,25 @@ def _extract_messages(body: Dict[str, Any]) -> List[Dict[str, str]]:
 
 
 class handler(BaseHTTPRequestHandler):
+    def _send_cors(self) -> None:
+        # Allow browser-based clients (and simple local frontends) to call this endpoint.
+        self.send_header("Access-Control-Allow-Origin", os.getenv("CHAT_CORS_ORIGIN", "*"))
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
     def _send(self, status: int, payload: Dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
+        self._send_cors()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        self._send_cors()
+        self.end_headers()
 
     def do_GET(self) -> None:
         """Health check endpoint."""
@@ -92,72 +114,113 @@ class handler(BaseHTTPRequestHandler):
         self._send(200, {"status": "ok", "service": "chat", "api": "gemini"})
 
     def do_POST(self) -> None:
-        if requests is None:
-            self._send(500, {"error": "requests library not available", "detail": _import_error})
-            return
+        # Never crash the function — always return a JSON error.
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            body = json.loads(self.rfile.read(length) or "{}")
-        except json.JSONDecodeError:
-            self._send(400, {"error": "Invalid JSON body"})
-            return
+            if requests is None:
+                self._send(500, {"error": "requests library not available", "detail": _import_error})
+                return
 
-        if not GEMINI_API_KEY:
-            self._send(500, {"error": "GOOGLE_CLOUD_API_KEY is not configured"})
-            return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
 
-        messages = _extract_messages(body)
-        if not messages:
-            self._send(400, {"error": "messages or prompt is required"})
-            return
+            raw = self.rfile.read(length) if length > 0 else b"{}"
+            try:
+                body = json.loads(raw or b"{}")
+            except json.JSONDecodeError:
+                self._send(400, {"error": "Invalid JSON body"})
+                return
 
-        # Default to a Gemini model; allow override via body["model"]
-        model = body.get("model", "gemini-1.5-flash")
-        temperature = float(body.get("temperature", 0.2))
-        max_tokens = int(body.get("max_tokens", 512))
+            if not isinstance(body, dict):
+                self._send(400, {"error": "JSON body must be an object"})
+                return
 
-        # Build Gemini generateContent payload
-        payload = {
-            "contents": _to_gemini_contents(messages),
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens,
-            },
-        }
+            if not GEMINI_API_KEY:
+                self._send(500, {"error": "GOOGLE_CLOUD_API_KEY is not configured"})
+                return
 
-        cache_key = _cache_key(payload)
-        cached = _cache_get(cache_key)
-        if cached:
-            self._send(200, {**cached, "cached": True})
-            return
+            messages = _extract_messages(body)
+            if not messages:
+                self._send(400, {"error": "messages or prompt is required"})
+                return
 
-        try:
-            response = requests.post(
-                f"{GEMINI_BASE_URL}/models/{model}:generateContent",
-                params={"key": GEMINI_API_KEY},
-                json=payload,
-                timeout=30,
-            )
-        except requests.RequestException as exc:
-            self._send(502, {"error": "Upstream request failed", "detail": str(exc)})
-            return
+            # Default to a Gemini model; allow override via body["model"]
+            model = body.get("model") or "gemini-1.5-flash"
+            if not isinstance(model, str):
+                model = str(model)
 
-        if response.status_code >= 400:
-            self._send(
-                response.status_code,
-                {"error": "Gemini API error", "detail": response.text},
-            )
-            return
+            def _safe_float(value: Any, default: float) -> float:
+                try:
+                    if value is None or value == "":
+                        return default
+                    return float(value)
+                except (TypeError, ValueError):
+                    return default
 
-        data = response.json()
-        # Extract text from Gemini response: candidates[0].content.parts[*].text
-        reply = ""
-        candidates = data.get("candidates") or []
-        if candidates:
-            content = candidates[0].get("content") or {}
-            parts = content.get("parts") or []
-            texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
-            reply = "".join(texts)
-        result = {"reply": reply, "model": model}
-        _cache_set(cache_key, result)
-        self._send(200, result)
+            def _safe_int(value: Any, default: int) -> int:
+                try:
+                    if value is None or value == "":
+                        return default
+                    return int(value)
+                except (TypeError, ValueError):
+                    return default
+
+            temperature = _safe_float(body.get("temperature", 0.2), 0.2)
+            max_tokens = _safe_int(body.get("max_tokens", 512), 512)
+
+            # Build Gemini generateContent payload
+            payload = {
+                "contents": _to_gemini_contents(messages),
+                "generationConfig": {
+                    "temperature": temperature,
+                    "maxOutputTokens": max_tokens,
+                },
+            }
+
+            cache_key = _cache_key(payload)
+            cached = _cache_get(cache_key)
+            if cached:
+                self._send(200, {**cached, "cached": True})
+                return
+
+            try:
+                response = requests.post(
+                    f"{GEMINI_BASE_URL}/models/{model}:generateContent",
+                    params={"key": GEMINI_API_KEY},
+                    json=payload,
+                    timeout=30,
+                )
+            except requests.RequestException as exc:
+                self._send(502, {"error": "Upstream request failed", "detail": str(exc)})
+                return
+
+            if response.status_code >= 400:
+                self._send(
+                    response.status_code,
+                    {"error": "Gemini API error", "detail": response.text},
+                )
+                return
+
+            try:
+                data = response.json()
+            except ValueError:
+                self._send(502, {"error": "Gemini returned non-JSON response", "detail": response.text})
+                return
+
+            # Extract text from Gemini response: candidates[0].content.parts[*].text
+            reply = ""
+            if isinstance(data, dict):
+                candidates = data.get("candidates") or []
+                if candidates and isinstance(candidates, list) and isinstance(candidates[0], dict):
+                    content = candidates[0].get("content") or {}
+                    parts = content.get("parts") or []
+                    if isinstance(parts, list):
+                        texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
+                        reply = "".join(texts)
+
+            result = {"reply": reply, "model": model}
+            _cache_set(cache_key, result)
+            self._send(200, result)
+        except Exception as exc:
+            self._send(500, {"error": "Unhandled server error", "detail": str(exc)})
