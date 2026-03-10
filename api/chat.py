@@ -1,15 +1,24 @@
 import hashlib
 import json
 import os
+import sys
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler
 from typing import Any, Dict, List, Tuple, Optional
+
+# Ensure project root is on sys.path so sibling packages resolve
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 try:
     import requests
 except ImportError as e:
     requests = None
     _import_error = str(e)
+else:
+    _import_error = ""
 
 # Gemini / Google Generative Language API configuration
 GEMINI_BASE_URL = os.getenv(
@@ -111,7 +120,13 @@ class handler(BaseHTTPRequestHandler):
         if requests is None:
             self._send(500, {"error": "requests library not available", "detail": _import_error})
             return
-        self._send(200, {"status": "ok", "service": "chat", "api": "gemini"})
+        self._send(200, {
+            "status": "ok",
+            "service": "chat",
+            "api": "gemini",
+            "python": sys.version,
+            "has_api_key": bool(GEMINI_API_KEY),
+        })
 
     def do_POST(self) -> None:
         # Never crash the function — always return a JSON error.

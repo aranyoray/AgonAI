@@ -1,6 +1,4 @@
-# Exclude Python project files and large directories from Vercel upload
-
-# Python
+# Python caches
 __pycache__/**
 *.pyc
 *.pyo
@@ -10,15 +8,12 @@ venv/**
 .env
 .env.*
 
-# Project-specific large/irrelevant directories for Vercel
-agents/**
-debates/**
-consensus/**
-utils/**
+# Examples and data (not needed for deployment)
 examples/**
 data/**
+tests/**
 
-# Not needed for Vercel deployment (but keep requirements.txt for api/)
+# Media and docs
 *.ipynb
 *.md
 *.pdf
@@ -37,7 +32,7 @@ data/**
 *.gz
 *.7z
 
-# Node caches (in case present)
+# Node caches
 node_modules/**
 
 # Build artifacts
