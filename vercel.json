@@ -1,10 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/*.py": {
-      "excludeFiles": "{agents/**,debates/**,consensus/**,utils/**,examples/**,data/**,tests/**,__pycache__/**,venv/**,*.ipynb,*.md,*.pdf,*.csv,*.tsv,*.xlsx,*.png,*.jpg,*.jpeg,*.gif,*.webp,*.mp4,*.mov,*.zip,*.tar,*.gz,*.7z,node_modules/**,dist/**,build/**,.next/**,out/**}"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
