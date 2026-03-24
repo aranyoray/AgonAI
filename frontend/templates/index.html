@@ -101,9 +101,20 @@
           <label><input id="summaryOnly" type="checkbox" /> Summary only</label>
         </div>
         <div class="form-row">
-          <label><input id="useOllama" type="checkbox" /> Use Ollama</label>
+          <label for="llmBackend">LLM Backend:</label>
+          <select id="llmBackend">
+            <option value="none">None (hardcoded templates)</option>
+            <option value="gemini" selected>Gemini API</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+          <input id="model" type="text" placeholder="gemini-2.0-flash" style="flex:1" />
+        </div>
+        <div class="form-row" id="ollamaFields" style="display:none">
+          <label for="baseUrl">Ollama URL:</label>
           <input id="baseUrl" type="text" placeholder="http://localhost:11434" style="flex:1" />
-          <input id="model" type="text" placeholder="llama3.1:8b" style="flex:1" />
+        </div>
+        <div class="form-row" id="geminiModelHint">
+          <span class="help-text">Uses GEMINI_API_KEY env var. Default model: gemini-2.0-flash</span>
         </div>
         <div class="form-row">
           <button id="runBtn">Run Debate</button>

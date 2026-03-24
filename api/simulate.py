@@ -23,6 +23,7 @@ try:
     from debates import DebateSimulator
     from utils.conversation_state import InMemoryConversationStore, load_state
     from utils.memory_clients import SuperMemoryClient, ExaContextClient
+    from utils.gemini_client import GeminiClient
 except ImportError:
     _boot_error = traceback.format_exc()
 
@@ -40,13 +41,13 @@ if not _boot_error:
     }
 
 
-def _create_agent(name: str, memory_client: Any = None) -> Any:
+def _create_agent(name: str, llm_client: Any = None, memory_client: Any = None) -> Any:
     key = name.lower()
     if key in ("rational", "empathetic"):
-        return AGENT_MAP[key](memory_client=memory_client)
+        return AGENT_MAP[key](llm_client=llm_client, memory_client=memory_client)
     if key not in AGENT_MAP:
         raise ValueError(f"Unknown agent: {name}. Available: {list(AGENT_MAP.keys())}")
-    return AGENT_MAP[key](memory_client=memory_client)
+    return AGENT_MAP[key](llm_client=llm_client, memory_client=memory_client)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -99,6 +100,8 @@ class handler(BaseHTTPRequestHandler):
         agent_names: List[str] = body.get("agents", [])
         topic: str = body.get("topic", "")
         rounds: int = int(body.get("rounds", 12))
+        use_gemini: bool = bool(body.get("useGemini", False))
+        model: Optional[str] = body.get("model")
         session_id: Optional[str] = body.get("sessionId")
 
         if len(agent_names) < 2:
@@ -108,6 +111,10 @@ class handler(BaseHTTPRequestHandler):
             self._send(400, {"error": "Topic is required"})
             return
 
+        llm_client = None
+        if use_gemini:
+            llm_client = GeminiClient(model=model)
+
         memory_client = SuperMemoryClient()
         exa_client = ExaContextClient()
 
@@ -116,7 +123,7 @@ class handler(BaseHTTPRequestHandler):
             conversation_state.append_turn("user", f"Run a debate on: {topic}")
 
         try:
-            agents = [_create_agent(name, memory_client=memory_client) for name in agent_names]
+            agents = [_create_agent(name, llm_client=llm_client, memory_client=memory_client) for name in agent_names]
         except ValueError as exc:
             self._send(400, {"error": str(exc)})
             return
@@ -129,7 +136,7 @@ class handler(BaseHTTPRequestHandler):
                 "historical_period": "1940s",
                 "context": "High-stakes political negotiation",
                 "stakes": "Critical - involves national interests and survival",
-                "use_llm": False,
+                "use_llm": llm_client is not None,
                 "context_briefing": exa_client.fetch_context(topic),
                 "conversation_state": conversation_state,
                 "policy_scoring": True,

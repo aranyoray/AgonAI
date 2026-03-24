@@ -25,7 +25,7 @@ GEMINI_BASE_URL = os.getenv(
     "GEMINI_BASE_URL",
     "https://generativelanguage.googleapis.com/v1beta",
 )
-GEMINI_API_KEY = os.getenv("GOOGLE_CLOUD_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CACHE_TTL_S = int(os.getenv("CHAT_CACHE_TTL_S", "120"))
 CACHE_MAX_ITEMS = int(os.getenv("CHAT_CACHE_MAX_ITEMS", "256"))
 
@@ -152,7 +152,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if not GEMINI_API_KEY:
-                self._send(500, {"error": "GOOGLE_CLOUD_API_KEY is not configured"})
+                self._send(500, {"error": "GEMINI_API_KEY is not configured"})
                 return
 
             messages = _extract_messages(body)

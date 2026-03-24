@@ -24,19 +24,40 @@ function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function renderChatMessages(container, messages) {
   container.innerHTML = '';
   messages.forEach((msg) => {
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble';
     const color = getAgentColor(msg.speaker);
-    bubble.innerHTML = `
-      <div class="chat-avatar" style="background:${color}">${getInitials(msg.speaker)}</div>
-      <div class="chat-body">
-        <div class="chat-speaker" style="color:${color}">${msg.speaker} <span class="chat-round">Round ${msg.round}</span></div>
-        <div class="chat-text">${msg.content.replace(/\n/g, '<br>')}</div>
-      </div>
-    `;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.style.background = color;
+    avatar.textContent = getInitials(msg.speaker);
+
+    const body = document.createElement('div');
+    body.className = 'chat-body';
+
+    const speaker = document.createElement('div');
+    speaker.className = 'chat-speaker';
+    speaker.style.color = color;
+    speaker.innerHTML = `${escapeHtml(msg.speaker)} <span class="chat-round">Round ${msg.round}</span>`;
+
+    const text = document.createElement('div');
+    text.className = 'chat-text';
+    text.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
+
+    body.appendChild(speaker);
+    body.appendChild(text);
+    bubble.appendChild(avatar);
+    bubble.appendChild(body);
     container.appendChild(bubble);
   });
   container.scrollTop = container.scrollHeight;
@@ -109,7 +130,9 @@ async function runSimulation() {
   const topic = topicSelect === 'custom' ? topicInput : topicSelect;
   const rounds = parseInt(document.getElementById('rounds').value, 10) || 12;
   const summaryOnly = document.getElementById('summaryOnly').checked;
-  const useOllama = document.getElementById('useOllama').checked;
+  const llmBackend = document.getElementById('llmBackend').value;
+  const useGemini = llmBackend === 'gemini';
+  const useOllama = llmBackend === 'ollama';
   const baseUrl = document.getElementById('baseUrl').value.trim() || undefined;
   const model = document.getElementById('model').value.trim() || undefined;
   const sessionId = window.localStorage.getItem('sessionId') || undefined;
@@ -121,12 +144,16 @@ async function runSimulation() {
   const scoresPanel = document.getElementById('scoresPanel');
   const scoresGrid = document.getElementById('scoresGrid');
 
-  resultsEl.textContent = 'Running...';
+  resultsEl.textContent = 'Running simulation\u2026';
   chatPanel.style.display = 'none';
   scoresPanel.style.display = 'none';
 
   if (agents.length < 2) {
-    resultsEl.textContent = 'Error: Select at least 2 agents.';
+    resultsEl.textContent = 'Please select at least 2 agents to start a debate.';
+    return;
+  }
+  if (!topic) {
+    resultsEl.textContent = 'Please enter or select a debate topic.';
     return;
   }
 
@@ -134,7 +161,7 @@ async function runSimulation() {
     const resp = await fetch('/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agents, topic, rounds, summaryOnly, useOllama, baseUrl, model, sessionId })
+      body: JSON.stringify({ agents, topic, rounds, summaryOnly, useGemini, useOllama, baseUrl, model, sessionId })
     });
 
     const data = await resp.json();
@@ -241,6 +268,18 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('topic').value = e.target.value;
     }
   });
+
+  // LLM backend toggle - show/hide Ollama fields
+  const llmSelect = document.getElementById('llmBackend');
+  const ollamaFields = document.getElementById('ollamaFields');
+  const geminiModelHint = document.getElementById('geminiModelHint');
+  function updateLLMFields() {
+    const val = llmSelect.value;
+    if (ollamaFields) ollamaFields.style.display = val === 'ollama' ? '' : 'none';
+    if (geminiModelHint) geminiModelHint.style.display = val === 'gemini' ? '' : 'none';
+  }
+  llmSelect.addEventListener('change', updateLLMFields);
+  updateLLMFields();
 
   // Jump buttons
   document.getElementById('jumpToConfig').addEventListener('click', () => {
