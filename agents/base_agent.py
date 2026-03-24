@@ -196,11 +196,8 @@ class HistoricalAgent(ABC):
         return self.memory_client.summarize_recent(self.name)
 
     def memory_footer(self, debate_context: Dict[str, Any]) -> str:
-        """Optional memory recap appended to non-LLM responses."""
-        summary = debate_context.get("memory_summary")
-        if not summary:
-            return ""
-        return f"\n\nMemory recap:\n{summary}"
+        """Memory footer is no longer appended to debate output."""
+        return ""
 
     def generate_llm_response(self, topic: str, debate_context: Dict[str, Any]) -> Optional[str]:
         """If llm_client is configured and use_llm is True, generate using LLM."""

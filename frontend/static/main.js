@@ -20,6 +20,18 @@ function getAgentColor(name) {
   return AGENT_COLORS[name] || '#6366f1';
 }
 
+// Convert hex color to a light tinted background (like iMessage bubbles)
+function agentBubbleStyle(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return {
+    bg: `rgba(${r}, ${g}, ${b}, 0.12)`,
+    text: `rgb(${Math.round(r * 0.45)}, ${Math.round(g * 0.45)}, ${Math.round(b * 0.45)})`,
+    border: `rgba(${r}, ${g}, ${b}, 0.25)`,
+  };
+}
+
 function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 }
@@ -32,10 +44,23 @@ function escapeHtml(str) {
 
 function renderChatMessages(container, messages) {
   container.innerHTML = '';
+  // Build a list of unique speakers in order of appearance for alternating alignment
+  const speakerOrder = [];
   messages.forEach((msg) => {
+    if (!speakerOrder.includes(msg.speaker)) speakerOrder.push(msg.speaker);
+  });
+
+  messages.forEach((msg) => {
+    const color = getAgentColor(msg.speaker);
+    const style = agentBubbleStyle(color);
+    const idx = speakerOrder.indexOf(msg.speaker);
+    const alignRight = idx % 2 === 1;
+
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble';
-    const color = getAgentColor(msg.speaker);
+    bubble.style.background = style.bg;
+    bubble.style.border = `1px solid ${style.border}`;
+    if (alignRight) bubble.style.alignSelf = 'flex-end';
 
     const avatar = document.createElement('div');
     avatar.className = 'chat-avatar';
@@ -52,6 +77,7 @@ function renderChatMessages(container, messages) {
 
     const text = document.createElement('div');
     text.className = 'chat-text';
+    text.style.color = style.text;
     text.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
 
     body.appendChild(speaker);
