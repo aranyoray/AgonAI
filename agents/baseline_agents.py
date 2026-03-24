@@ -90,7 +90,6 @@ class RationalAgent(HistoricalAgent):
             f"the marginal cost exceeds the marginal benefit, but I will hold firm "
             f"on positions where my net gain is positive."
             + self.compromise_note()
-            + self.memory_footer(debate_context)
         )
 
     def evaluate_proposal(
@@ -161,7 +160,6 @@ class EmpatheticAgent(HistoricalAgent):
             f"come away better off. Let me propose a framework where we each "
             f"share our top three needs and work from there."
             + self.compromise_note()
-            + self.memory_footer(debate_context)
         )
 
     def evaluate_proposal(

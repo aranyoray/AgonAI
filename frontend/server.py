@@ -15,6 +15,7 @@ from debates.experiment_runner import (
     EXPERIMENT_TOPICS,
 )
 from utils.ollama_client import OllamaClient
+from utils.gemini_client import GeminiClient
 from utils.conversation_state import InMemoryConversationStore, load_state
 from utils.memory_clients import SuperMemoryClient, ExaContextClient
 
@@ -63,6 +64,7 @@ async def simulate(request: Request) -> JSONResponse:
     rounds: int = int(body.get("rounds", 12))
     summary_only: bool = bool(body.get("summaryOnly", True))
     use_ollama: bool = bool(body.get("useOllama", False))
+    use_gemini: bool = bool(body.get("useGemini", False))
     model: Optional[str] = body.get("model")
     base_url: Optional[str] = body.get("baseUrl")
     session_id: Optional[str] = body.get("sessionId")
@@ -72,17 +74,19 @@ async def simulate(request: Request) -> JSONResponse:
     if not topic:
         return JSONResponse({"error": "Topic is required"}, status_code=400)
 
-    ollama_client: Optional[OllamaClient] = None
+    llm_client = None
     memory_client = SuperMemoryClient()
     exa_client = ExaContextClient()
-    if use_ollama:
-        ollama_client = OllamaClient(base_url=base_url, model=model)
+    if use_gemini:
+        llm_client = GeminiClient(model=model)
+    elif use_ollama:
+        llm_client = OllamaClient(base_url=base_url, model=model)
 
     # Build agents
     conversation_state = load_state(session_id=session_id, store=conversation_store)
     if not conversation_state.turns:
         conversation_state.append_turn("user", f"Run a debate on: {topic}")
-    agents = [create_agent(name, llm_client=ollama_client, memory_client=memory_client) for name in agent_names]
+    agents = [create_agent(name, llm_client=llm_client, memory_client=memory_client) for name in agent_names]
 
     # Run debate
     simulator = DebateSimulator(max_rounds=rounds, consensus_threshold=0.7)
@@ -93,7 +97,7 @@ async def simulate(request: Request) -> JSONResponse:
             "historical_period": "1940s",
             "context": "High-stakes political negotiation",
             "stakes": "Critical - involves national interests and survival",
-            "use_llm": bool(ollama_client is not None),
+            "use_llm": llm_client is not None,
             "memory_provider": "supermemory",
             "context_provider": "exa",
             "context_briefing": exa_client.fetch_context(topic),
@@ -135,8 +139,9 @@ async def simulate(request: Request) -> JSONResponse:
         "durationMinutes": round(result.duration_minutes, 2),
         "agreements": result.key_agreements,
         "disagreements": result.key_disagreements,
-        "usedOllama": bool(ollama_client is not None),
-        "model": model or os.environ.get("OLLAMA_MODEL"),
+        "usedLLM": llm_client is not None,
+        "llmBackend": "gemini" if use_gemini else ("ollama" if use_ollama else None),
+        "model": model or (os.environ.get("GEMINI_MODEL") if use_gemini else os.environ.get("OLLAMA_MODEL")),
         "sessionId": conversation_state.session_id,
         "chatMessages": chat_messages,
         "policyScores": {a.name: a.scorecard.as_dict() for a in agents},

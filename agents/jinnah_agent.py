@@ -65,86 +65,48 @@ class JinnahAgent(HistoricalAgent):
             "international_relations": "Pakistan will be a strong, independent Muslim state"
         }
     
+    _RESPONSES = {
+        "territorial_disputes": [
+            "My dear {opponents}, the question of territory is not merely about land — it is about the very survival of Muslim civilization in the subcontinent. The two-nation theory is not a political slogan; it is a fundamental truth. Muslims and Hindus are separate nations with distinct cultures and aspirations. The areas where Muslims are in majority must form Pakistan. I am willing to discuss details, but the principle is non-negotiable.",
+            "My dear {opponents}, I have heard your counterarguments, but they rest on a flawed premise — that constitutional safeguards within a united India can protect Muslim interests. History tells us otherwise. In province after province where Congress ruled, Muslim rights were trampled. Wardha education, Bande Mataram, Hindi imposition — these are not hypothetical fears but documented realities. Partition is the only guarantee.",
+            "My dear {opponents}, let me be pragmatic rather than sentimental. We are three hundred million Muslims in the subcontinent. We have our own language, our own law, our own civilization. To ask us to exist as a permanent minority in someone else's state is to ask us to accept second-class citizenship in perpetuity. No self-respecting people would agree to that. Let us draw fair boundaries and part as friends rather than remain together as adversaries.",
+            "My dear {opponents}, I sense we are close to an impasse, so let me propose a practical framework. Let an independent boundary commission demarcate Muslim-majority districts. Let there be treaty agreements on trade, defense, and minority protection between the two successor states. Pakistan does not seek enmity with India — we seek sovereignty. These two things need not conflict.",
+        ],
+        "race_relations": [
+            "My respected {opponents}, the issue is not about race or color — it is about the fundamental differences between Muslim and Hindu civilizations. We are not inferior or superior; we are simply different. Muslims have their own history, heroes, and way of life. The Congress talks of unity, but what they mean is assimilation. Hindus and Muslims can live as good neighbors, but we cannot live as one nation.",
+            "My respected {opponents}, I was once called the Ambassador of Hindu-Muslim unity. I spent years trying to bridge the gap within the Congress. But I learned through bitter experience that a minority's rights cannot depend on the goodwill of the majority. Goodwill fades; constitutional protections get amended. Only sovereignty is permanent. That is why I changed my position — not out of hatred, but out of realism.",
+            "My respected {opponents}, let us not confuse respecting differences with promoting hatred. I have always maintained that Pakistan will protect its Hindu and Christian minorities — their temples, their rights, their property. A state built on the principle of self-determination must extend that principle to all its citizens. But self-determination begins with having a state of your own.",
+            "My respected {opponents}, I note that this debate keeps returning to abstract ideals while avoiding concrete realities. In Calcutta, in Noakhali, in Bihar — communities are already in conflict. The question is not whether we should separate but how to do so with minimum bloodshed. I urge us to focus on practical arrangements rather than philosophical objections to a process already underway.",
+        ],
+        "economic_policy": [
+            "My dear {opponents}, Pakistan must be economically self-sufficient and guided by Islamic principles. The new state will promote Islamic banking, encourage Muslim entrepreneurship, and ensure development benefits all citizens. Economic development must go hand in hand with social justice. We are willing to trade, but we will not compromise our independence for economic gain.",
+            "My dear {opponents}, critics say Pakistan cannot be economically viable. I reject this categorically. Pakistan will have the Indus basin, the cotton fields of Punjab, the jute of Bengal, and the ports of Karachi and Chittagong. We have resources, we have labor, and we have the determination of a people building their own nation. What we lack in inherited infrastructure we will build through enterprise and faith.",
+            "My dear {opponents}, I am a lawyer and a businessman before I am a politician. Let me speak plainly about economics. The Muslim-majority regions have been systematically underdeveloped under colonial rule and Congress governance alike. Independence gives us the power to direct investment where it is needed, to develop our own industries, and to trade on our own terms. Dependency is not an economic policy — it is a form of subjugation.",
+            "My dear {opponents}, rather than debating economic theories, let me propose something concrete: a joint economic council between the two successor states to manage the transition — shared currency for a transition period, equitable division of assets and debts, and bilateral trade agreements. Pakistan seeks prosperity, not isolation. But prosperity on our own terms.",
+        ],
+        "_default": [
+            "My respected {opponents}, I have always believed in constitutional methods and democratic processes. The Muslim League has won the support of the Muslim masses through peaceful political mobilization. We are simply asking for the right to live as a free people in our own homeland. I am willing to negotiate terms, but I will not compromise on the fundamental principle of Pakistan.",
+            "My respected {opponents}, you ask me to trust in guarantees and safeguards. But I have sat in legislative councils where Muslim voices were outvoted on every matter of importance. I have watched Congress ministries impose their will on Muslim populations without consultation. Trust must be earned through power-sharing, not demanded through fine words. Give Muslims genuine power, or give them their own state.",
+            "My respected {opponents}, I do not wish to repeat myself, so let me advance the discussion. What specific guarantees can you offer that go beyond paper promises? I need mechanisms with teeth — veto powers, autonomous regions, separate electorates at minimum. If you cannot offer these within a united framework, then you must accept that partition is the only alternative. The status quo is not an option.",
+            "My respected {opponents}, we have debated long enough. The Muslim masses have made their will clear through the ballot box. The 1946 elections gave the Muslim League an overwhelming mandate. Democracy demands that this mandate be honored. Let us move from debate to action — appoint the boundary commission, agree on the transfer of power, and let two free nations begin their journey.",
+        ],
+    }
+
     def generate_response(self, topic: str, other_agents: List[HistoricalAgent], debate_context: Dict[str, Any]) -> str:
         """Generate Jinnah's response to a debate topic."""
-        # Try LLM if configured
         llm = self.generate_llm_response(topic, debate_context)
         if llm:
             return llm
-        
-        # Identify opponents
-        opponent_names = [agent.name for agent in other_agents if agent.name != self.name]
+
+        opponent_names = [a.name for a in other_agents if a.name != self.name]
         opponents_str = ", ".join(opponent_names) if opponent_names else "my colleagues"
-        
-        # Base response on topic and personality
-        if topic == "territorial_disputes":
-            out = f"""My dear {opponents_str}, the question of territory is not merely 
-            about land - it is about the very survival of Muslim civilization in the 
-            subcontinent. The two-nation theory is not a political slogan; it is a 
-            fundamental truth that has been proven throughout history.
-            
-            Muslims and Hindus are not just different religious communities - we are 
-            separate nations with distinct cultures, traditions, and aspirations. 
-            No amount of constitutional safeguards can protect Muslim interests in 
-            a Hindu-majority state.
-            
-            The areas where Muslims are in majority must form Pakistan. This is not 
-            a demand - it is a necessity. Without a separate homeland, Muslim culture, 
-            language, and way of life will be gradually eroded and eventually destroyed.
-            
-            I am willing to discuss the details of partition, but the principle of 
-            Pakistan is non-negotiable. The Muslim League will not accept anything less."""
-        elif topic == "race_relations":
-            out = f"""My respected {opponents_str}, the issue is not about race 
-            or color - it is about the fundamental differences between Muslim and 
-            Hindu civilizations. We are not inferior or superior to each other; 
-            we are simply different.
-            
-            Muslims have their own history, their own heroes, their own way of life. 
-            We cannot be expected to merge into a Hindu-dominated society where our 
-            values and traditions will be gradually diluted.
-            
-            The Congress talks of unity, but what they really mean is assimilation. 
-            They want Muslims to give up their distinct identity and become second-class 
-            citizens in a Hindu state. This we cannot and will not accept.
-            
-            Let us be honest: Hindus and Muslims can live as good neighbors, but 
-            we cannot live as one nation. The sooner we accept this reality, the 
-            sooner we can work towards a peaceful separation."""
-        elif topic == "economic_policy":
-            out = f"""My dear {opponents_str}, Pakistan must be economically 
-            self-sufficient and guided by Islamic principles. We cannot depend on 
-            others for our survival and prosperity.
-            
-            The new state will promote Islamic banking, encourage Muslim entrepreneurship, 
-            and ensure that economic development benefits all citizens regardless of 
-            their background. We will build industries, develop agriculture, and 
-            create opportunities for our people.
-            
-            However, economic development must go hand in hand with social justice. 
-            The Islamic principles of equality, brotherhood, and compassion will 
-            guide our economic policies.
-            
-            We are willing to trade with other nations, but we will not compromise 
-            our independence or our values for economic gain."""
-        else:
-            out = f"""My respected {opponents_str}, I have always believed in 
-            constitutional methods and democratic processes. The Muslim League has 
-            won the support of the Muslim masses through peaceful political mobilization.
-            
-            We are not asking for anything unreasonable. We are simply asking for 
-            the right to live as a free people in our own homeland. This is the 
-            natural right of every nation.
-            
-            I am willing to negotiate the terms of partition, but I will not compromise 
-            on the fundamental principle of Pakistan. The Muslim masses have spoken, 
-            and their voice must be heard.
-            
-            Let us work together to ensure a peaceful and orderly transition. The 
-            future of both India and Pakistan depends on our ability to resolve 
-            this issue amicably."""
+
+        pool = self._RESPONSES.get(topic, self._RESPONSES["_default"])
+        round_num = len(self.conversation_history)
+        out = pool[round_num % len(pool)].format(opponents=opponents_str)
+
         note = self.compromise_note()
-        return out + note + self.memory_footer(debate_context)
+        return out + note
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""

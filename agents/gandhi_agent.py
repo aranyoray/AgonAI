@@ -66,77 +66,48 @@ class GandhiAgent(HistoricalAgent):
             "international_relations": "Peaceful coexistence and mutual respect between all nations"
         }
     
+    _RESPONSES = {
+        "territorial_disputes": [
+            "My dear {opponents}, I speak to you with love and compassion. Territorial disputes are born from the illusion of separation. We are all children of the same divine source, and no piece of land is worth the blood of our brothers and sisters. The path of violence only begets more violence. Instead, let us sit together, share our stories, and find the truth that unites us.",
+            "My dear {opponents}, I must return to this point with renewed conviction. When I walked to the sea to make salt, it was not the salt I sought but the recognition that unjust laws lose their power when good people refuse to obey them. Territorial claims enforced by guns will never bring lasting peace. I propose we establish a joint council where every community has a voice.",
+            "My dear {opponents}, I sense frustration in our dialogue, and I understand it. But consider this: in South Africa, I saw how those who seize land by force must spend all their energy defending it. The true owner of any land is the one who serves its people. Let us redirect our energy from claiming borders to uplifting those who live within them.",
+            "My dear {opponents}, we have spoken at length and yet the fundamental truth remains: no one wins a war over land. The victor inherits ruins and resentment. I have seen this in my own country. Let me propose something concrete: a shared governance zone where both sides administer together, proving that cooperation yields more than conquest.",
+        ],
+        "race_relations": [
+            "My beloved {opponents}, the concept of racial superiority is a great evil that has caused untold suffering. In the eyes of God, we are all equal. I have seen how prejudice destroys the soul of both oppressor and oppressed. The solution is not to fight hatred with hatred, but to transform it with love.",
+            "My beloved {opponents}, let me share what I learned in Durban. When I was thrown off that train for the color of my skin, I realized that racism is not strength — it is fear dressed in authority. Every person who claims racial superiority is confessing their own insecurity. We must answer fear with courage and hatred with patient love.",
+            "My beloved {opponents}, I notice we keep circling the same ground. Let me try a different approach: rather than debating whether races are equal in theory, I propose we undertake a practical experiment. Let representatives of every community work together on a shared project — building a school, perhaps. Actions reveal our common humanity faster than words.",
+            "My beloved {opponents}, the spinning wheel taught me something about race as well. When I spin cotton, I cannot tell which thread came from which field. Woven together, they become something strong and beautiful. That is what humanity is — threads of different colors making one cloth. Let us weave together rather than unravel each other.",
+        ],
+        "economic_policy": [
+            "My dear {opponents}, the current economic system creates great inequality. The rich become richer while the poor become poorer. I believe in the economics of simple living and high thinking. Each village should be self-sufficient. The spinning wheel is not just a tool — it is a symbol of our independence.",
+            "My dear {opponents}, I must challenge the assumption that industrialization is progress. In my ashram, we proved that a community can thrive by producing what it needs. When you import everything, you export your dignity. I do not say we should reject all modern tools, but the economy must serve the village, not the factory owner.",
+            "My dear {opponents}, let me offer a concrete proposal rather than repeating principles. What if we designate ten villages as pilot communities for self-reliance? Give them one year. Measure their welfare, their dignity, their happiness — not just their output. If they fail, I will reconsider. But I believe they will thrive.",
+            "My dear {opponents}, I hear your arguments about efficiency and scale, and I respect them. But efficiency for whom? An economy that leaves millions hungry while producing surplus is not efficient — it is cruel. Let us define economic success not by gross product but by whether the poorest person has enough to eat and enough purpose to live with dignity.",
+        ],
+        "_default": [
+            "My dear {opponents}, I see that we have different approaches, but I believe we all seek the same thing — a better world for our children. The question is not who is right, but what is right. Truth is not a possession to be defended, but a path to be walked together.",
+            "My dear {opponents}, I have been listening carefully to each of you, and I hear pain beneath the positions. When we argue from fear, we build walls. When we argue from hope, we build bridges. Let me ask each of you: what is the world you want your grandchildren to inherit? Start there, and I believe we will find common ground.",
+            "My dear {opponents}, permit me to be direct. We have exchanged fine words, but words without action are like a garden without water. I propose that each of us name one concrete concession we are willing to make today — not tomorrow, not in principle, but today. I will begin: I am willing to accept a slower timeline if it means a more just outcome.",
+            "My dear {opponents}, I sense we are approaching a turning point. In every negotiation I have known, there comes a moment when stubbornness must give way to wisdom. I do not ask you to abandon your principles — only to hold them with open hands rather than clenched fists. What can we build together that none of us could build alone?",
+        ],
+    }
+
     def generate_response(self, topic: str, other_agents: List[HistoricalAgent], debate_context: Dict[str, Any]) -> str:
         """Generate Gandhi's response to a debate topic."""
-        # Try LLM if configured
         llm = self.generate_llm_response(topic, debate_context)
         if llm:
             return llm
-        
-        # Identify opponents
-        opponent_names = [agent.name for agent in other_agents if agent.name != self.name]
+
+        opponent_names = [a.name for a in other_agents if a.name != self.name]
         opponents_str = ", ".join(opponent_names) if opponent_names else "my friends"
-        
-        # Base response on topic and personality
-        if topic == "territorial_disputes":
-            out = f"""My dear {opponents_str}, I speak to you with love and compassion. 
-            Territorial disputes are born from the illusion of separation. We are all children 
-            of the same divine source, and no piece of land is worth the blood of our brothers 
-            and sisters.
-            
-            The path of violence only begets more violence. Instead, let us sit together, 
-            share our stories, and find the truth that unites us. When we understand each 
-            other's pain and aspirations, solutions will naturally emerge.
-            
-            I propose that we begin with small steps - perhaps a joint prayer meeting, 
-            or sharing a meal together. When hearts are open, minds can meet. The land 
-            belongs to no one and everyone. Let us be its caretakers, not its conquerors."""
-        elif topic == "race_relations":
-            out = f"""My beloved {opponents_str}, the concept of racial superiority 
-            is a great evil that has caused untold suffering. In the eyes of God, we are 
-            all equal - whether we are black, white, brown, or any other color.
-            
-            I have seen with my own eyes how prejudice destroys the soul of both the 
-            oppressor and the oppressed. The oppressor becomes hardened and cruel, while 
-            the oppressed may lose faith in humanity itself.
-            
-            The solution is not to fight hatred with hatred, but to transform it with love. 
-            When someone strikes you on one cheek, offer the other. This is not weakness - 
-            it is the greatest strength. It takes more courage to love your enemy than to 
-            destroy them.
-            
-            Let us work together to build a world where every child can grow up knowing 
-            they are valued for who they are, not what they look like."""
-        elif topic == "economic_policy":
-            out = f"""My dear {opponents_str}, the current economic system creates 
-            great inequality and suffering. The rich become richer while the poor become 
-            poorer. This is not the way of truth.
-            
-            I believe in the economics of simple living and high thinking. Each village 
-            should be self-sufficient, producing what it needs locally. This creates 
-            dignity, employment, and reduces our dependence on distant markets.
-            
-            The spinning wheel is not just a tool - it is a symbol of our independence. 
-            When we spin our own cloth, we spin our own destiny. Let us build an economy 
-            that serves people, not profits.
-            
-            I propose we start with small experiments - perhaps a few villages working 
-            together to become self-reliant. Success in small things leads to success 
-            in great things."""
-        else:
-            out = f"""My dear {opponents_str}, I see that we have different approaches, 
-            but I believe we all seek the same thing - a better world for our children. 
-            The question is not who is right, but what is right.
-            
-            Truth is not a possession to be defended, but a path to be walked together. 
-            When we are honest about our fears and hopes, when we listen with open hearts, 
-            we can find solutions that serve everyone.
-            
-            I invite you to join me in this experiment with truth. Let us see if love 
-            and non-violence can achieve what force and violence cannot. The future 
-            of humanity depends on our willingness to try."""
+
+        pool = self._RESPONSES.get(topic, self._RESPONSES["_default"])
+        round_num = len(self.conversation_history)
+        out = pool[round_num % len(pool)].format(opponents=opponents_str)
+
         note = self.compromise_note()
-        return out + note + self.memory_footer(debate_context)
+        return out + note
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""
