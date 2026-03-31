@@ -1,9 +1,10 @@
 """
-Robotic Finger Servo Control - Python (Raspberry Pi / Serial)
-==============================================================
-Control the robotic finger via:
-  1. Direct GPIO servo control (Raspberry Pi)
-  2. Serial communication to Arduino
+Robotic Finger - Wire Tendon Servo Controller (Python)
+=======================================================
+Controls a soft robotic finger via dual wire tendon system.
+
+The servo horn has a spool that winds/unwinds stainless steel cable
+through Bowden sheaths and PTFE tube guides to curl/extend the finger.
 
 Usage:
   python finger_servo_control.py --mode gpio     # Direct Raspberry Pi GPIO
@@ -16,29 +17,45 @@ import time
 import sys
 import math
 
-# --- Configuration ---
-SERVO_PIN = 18           # GPIO pin for Raspberry Pi PWM
-FINGER_OPEN = 10         # Open angle (degrees)
-FINGER_CLOSED = 160      # Closed/grip angle (degrees)
-THREAD_HOLD = 120        # Thread holding angle (degrees)
-FINGER_REST = 45         # Rest position (degrees)
-SWEEP_DELAY = 0.015      # Delay between angle steps (seconds)
-SERIAL_BAUD = 9600
+# --- Wire Tendon Angle Mapping ---
+# Servo angle controls spool rotation = wire pull distance
+TENDON_FULL_SLACK   = 10    # Wire slack, finger fully open
+TENDON_LIGHT_PULL   = 60    # Light tension, finger starts curling
+TENDON_THREAD_GRIP  = 110   # Thread holding tension
+TENDON_FULL_PULL    = 160   # Max pull, finger fully closed
+TENDON_REST         = 45    # Pretensioned rest position
+
+# --- Config ---
+SERVO_PIN    = 18
+SWEEP_DELAY  = 0.012
+SERIAL_BAUD  = 9600
+WIRE_DEADBAND = 3
 
 
-class ServoController:
-    """Base class for servo control."""
+class TendonController:
+    """Base class for wire tendon servo control."""
+
+    TENSION_NAMES = {0: "SLACK", 1: "LIGHT", 2: "MEDIUM", 3: "FULL"}
 
     def __init__(self):
-        self.current_angle = FINGER_REST
+        self.current_angle = TENDON_REST
         self.is_gripping = False
+        self.tension_level = 1
 
     def set_angle(self, angle):
-        """Set servo to exact angle."""
         raise NotImplementedError
 
+    def _update_tension(self):
+        if self.current_angle <= TENDON_FULL_SLACK + WIRE_DEADBAND:
+            self.tension_level = 0
+        elif self.current_angle <= TENDON_LIGHT_PULL:
+            self.tension_level = 1
+        elif self.current_angle <= TENDON_THREAD_GRIP:
+            self.tension_level = 2
+        else:
+            self.tension_level = 3
+
     def smooth_move(self, target_angle):
-        """Smoothly move servo to target angle."""
         target_angle = max(0, min(180, target_angle))
         step = 1 if target_angle > self.current_angle else -1
 
@@ -47,77 +64,96 @@ class ServoController:
             self.set_angle(self.current_angle)
             time.sleep(SWEEP_DELAY)
 
-        print(f"  Moved to {self.current_angle}°")
+        self._update_tension()
+        print(f"  Spool at {self.current_angle}° | Tension: {self.TENSION_NAMES[self.tension_level]}")
 
-    def open_finger(self):
-        """Fully open the finger."""
-        print("Opening finger...")
-        self.smooth_move(FINGER_OPEN)
+    def release_wire(self):
+        print("Releasing wire (finger opens)...")
+        self.smooth_move(TENDON_FULL_SLACK)
         self.is_gripping = False
 
-    def close_finger(self):
-        """Fully close/grip the finger."""
-        print("Closing finger...")
-        self.smooth_move(FINGER_CLOSED)
+    def full_pull(self):
+        print("Full wire pull (finger closes)...")
+        self.smooth_move(TENDON_FULL_PULL)
         self.is_gripping = True
 
-    def thread_hold(self):
-        """Move to thread holding position."""
-        print("Thread hold position...")
-        self.smooth_move(THREAD_HOLD)
+    def thread_grip(self):
+        print("Thread grip tension...")
+        self.smooth_move(TENDON_THREAD_GRIP)
         self.is_gripping = True
 
-    def rest_position(self):
-        """Move to rest position."""
-        print("Rest position...")
-        self.smooth_move(FINGER_REST)
+    def light_curl(self):
+        print("Light curl...")
+        self.smooth_move(TENDON_LIGHT_PULL)
+        self.is_gripping = False
+
+    def rest_tension(self):
+        print("Rest pretension...")
+        self.smooth_move(TENDON_REST)
         self.is_gripping = False
 
     def thread_keep_sequence(self):
         """
-        Automated thread keeping sequence:
-        1. Open finger wide
-        2. Position for thread catch
-        3. Close slowly to grip
-        4. Hold with gentle oscillation
+        Wire tendon thread keeping sequence:
+        1. Release wire -> finger opens fully
+        2. Light pull -> finger starts curling
+        3. Medium pull -> thread grip tension
+        4. Oscillation -> seat thread in guide grooves
+        5. Hold steady
         """
-        print("Starting thread keep sequence...")
+        print("Wire Tendon Thread Keep Sequence")
+        print("================================")
 
-        # Step 1: Open
-        print("  [1/4] Opening...")
-        self.smooth_move(FINGER_OPEN)
+        print("  [1/5] Releasing wire - finger opens...")
+        self.smooth_move(TENDON_FULL_SLACK)
+        time.sleep(1.2)
+
+        print("  [2/5] Light pretension - begin curl...")
+        self.smooth_move(TENDON_LIGHT_PULL)
         time.sleep(1.0)
 
-        # Step 2: Position
-        print("  [2/4] Positioning for thread...")
-        self.smooth_move(FINGER_REST)
-        time.sleep(0.8)
-
-        # Step 3: Grip
-        print("  [3/4] Gripping thread...")
-        self.smooth_move(THREAD_HOLD)
+        print("  [3/5] Thread grip tension - closing on thread...")
+        self.smooth_move(TENDON_THREAD_GRIP)
         time.sleep(0.5)
 
-        # Step 4: Hold with micro-oscillation
-        print("  [4/4] Securing thread (oscillating)...")
+        print("  [4/5] Oscillating to seat thread in grooves...")
         start = time.time()
         while time.time() - start < 3.0:
-            oscillation = int(3 * math.sin(time.time() * 2))
-            self.set_angle(THREAD_HOLD + oscillation)
+            oscillation = int(5 * math.sin(time.time() * 3))
+            self.set_angle(TENDON_THREAD_GRIP + oscillation)
             time.sleep(0.05)
 
-        # Settle
-        self.set_angle(THREAD_HOLD)
+        print("  [5/5] Holding steady tension.")
+        self.set_angle(TENDON_THREAD_GRIP)
+        self.current_angle = TENDON_THREAD_GRIP
         self.is_gripping = True
-        print("  Thread secured and held.")
+        self._update_tension()
+        print("  Thread secured!")
+
+    def increase_tension(self, step=15):
+        new_angle = min(180, self.current_angle + step)
+        print(f"Tension +{step}...")
+        self.smooth_move(new_angle)
+
+    def decrease_tension(self, step=15):
+        new_angle = max(0, self.current_angle - step)
+        print(f"Tension -{step}...")
+        self.smooth_move(new_angle)
+
+    def status(self):
+        self._update_tension()
+        print(f"--- Wire Tendon Status ---")
+        print(f"  Servo: {self.current_angle}° | Tension: {self.TENSION_NAMES[self.tension_level]}")
+        print(f"  Gripping: {'Yes' if self.is_gripping else 'No'}")
+        print(f"  Route: Spool -> Bowden -> Base -> PTFE guides -> Pulleys -> Anchor")
+        print(f"--------------------------")
 
     def cleanup(self):
-        """Release resources."""
         pass
 
 
-class GPIOServoController(ServoController):
-    """Direct Raspberry Pi GPIO servo control using hardware PWM."""
+class GPIOTendonController(TendonController):
+    """Raspberry Pi GPIO control."""
 
     def __init__(self):
         super().__init__()
@@ -126,16 +162,15 @@ class GPIOServoController(ServoController):
             self.GPIO = GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(SERVO_PIN, GPIO.OUT)
-            self.pwm = GPIO.PWM(SERVO_PIN, 50)  # 50Hz for servo
-            self.pwm.start(self._angle_to_duty(FINGER_REST))
-            print(f"GPIO servo initialized on pin {SERVO_PIN}")
+            self.pwm = GPIO.PWM(SERVO_PIN, 50)
+            self.pwm.start(self._angle_to_duty(TENDON_REST))
+            print(f"GPIO servo on pin {SERVO_PIN}")
         except ImportError:
-            print("ERROR: RPi.GPIO not available. Use --mode serial instead.")
+            print("ERROR: RPi.GPIO not available. Use --mode serial.")
             sys.exit(1)
 
     @staticmethod
     def _angle_to_duty(angle):
-        """Convert angle (0-180) to duty cycle (2.5-12.5%)."""
         return 2.5 + (angle / 180.0) * 10.0
 
     def set_angle(self, angle):
@@ -149,28 +184,26 @@ class GPIOServoController(ServoController):
         print("GPIO cleaned up.")
 
 
-class SerialServoController(ServoController):
-    """Control servo via Arduino over serial."""
+class SerialTendonController(TendonController):
+    """Arduino serial control."""
 
     def __init__(self, port="/dev/ttyUSB0", baud=SERIAL_BAUD):
         super().__init__()
         try:
             import serial
             self.ser = serial.Serial(port, baud, timeout=2)
-            time.sleep(2)  # Wait for Arduino reset
-            # Read startup message
+            time.sleep(2)
             while self.ser.in_waiting:
                 print(f"  Arduino: {self.ser.readline().decode().strip()}")
-            print(f"Serial connected on {port} @ {baud}")
+            print(f"Serial connected: {port} @ {baud}")
         except ImportError:
-            print("ERROR: pyserial not installed. Run: pip install pyserial")
+            print("ERROR: pip install pyserial")
             sys.exit(1)
         except Exception as e:
-            print(f"ERROR: Could not open serial port {port}: {e}")
+            print(f"ERROR: {e}")
             sys.exit(1)
 
-    def _send_command(self, cmd):
-        """Send command to Arduino and read response."""
+    def _send(self, cmd):
         self.ser.write(f"{cmd}\n".encode())
         time.sleep(0.1)
         while self.ser.in_waiting:
@@ -181,37 +214,41 @@ class SerialServoController(ServoController):
     def set_angle(self, angle):
         angle = max(0, min(180, angle))
         self.current_angle = angle
-        self._send_command(str(angle))
+        self._send(str(angle))
 
     def smooth_move(self, target_angle):
-        """For serial mode, let Arduino handle smooth movement."""
-        self._send_command(str(target_angle))
+        self._send(str(target_angle))
         self.current_angle = target_angle
+        self._update_tension()
 
-    def open_finger(self):
-        print("Opening finger...")
-        self._send_command("o")
+    def release_wire(self):
+        print("Releasing wire...")
+        self._send("o")
         self.is_gripping = False
 
-    def close_finger(self):
-        print("Closing finger...")
-        self._send_command("c")
+    def full_pull(self):
+        print("Full pull...")
+        self._send("c")
         self.is_gripping = True
 
-    def thread_hold(self):
-        print("Thread hold position...")
-        self._send_command("t")
+    def thread_grip(self):
+        print("Thread grip...")
+        self._send("t")
         self.is_gripping = True
 
-    def rest_position(self):
-        print("Rest position...")
-        self._send_command("r")
+    def rest_tension(self):
+        print("Rest tension...")
+        self._send("r")
+        self.is_gripping = False
+
+    def light_curl(self):
+        print("Light curl...")
+        self._send("l")
         self.is_gripping = False
 
     def thread_keep_sequence(self):
-        print("Starting thread keep sequence...")
-        self._send_command("k")
-        # Wait for sequence to complete
+        print("Thread keep sequence...")
+        self._send("k")
         time.sleep(8)
         while self.ser.in_waiting:
             line = self.ser.readline().decode().strip()
@@ -219,90 +256,94 @@ class SerialServoController(ServoController):
                 print(f"  Arduino: {line}")
         self.is_gripping = True
 
+    def increase_tension(self, step=15):
+        self._send("+")
+
+    def decrease_tension(self, step=15):
+        self._send("-")
+
     def cleanup(self):
         if hasattr(self, 'ser') and self.ser.is_open:
             self.ser.close()
-            print("Serial connection closed.")
+            print("Serial closed.")
 
 
-def interactive_control(controller):
-    """Interactive command loop."""
-    print("\n=== Robotic Finger Control ===")
+def interactive_control(ctrl):
+    print("\n=== Wire Tendon Finger Control ===")
     print("Commands:")
-    print("  o       - Open finger")
-    print("  c       - Close/grip")
-    print("  t       - Thread hold position")
-    print("  r       - Rest position")
-    print("  k       - Thread keeping sequence")
-    print("  0-180   - Set exact angle")
+    print("  o       - Release wire (open)")
+    print("  c       - Full pull (close)")
+    print("  t       - Thread grip tension")
+    print("  l       - Light curl")
+    print("  r       - Rest pretension")
+    print("  k       - Thread keep sequence")
+    print("  +/-     - Adjust tension ±15°")
+    print("  0-180   - Set exact spool angle")
+    print("  ?       - Status")
     print("  q       - Quit")
-    print("==============================\n")
+    print("==================================\n")
 
     while True:
         try:
-            cmd = input("finger> ").strip().lower()
+            cmd = input("tendon> ").strip().lower()
 
             if not cmd:
                 continue
             elif cmd == 'q':
-                print("Returning to rest position...")
-                controller.rest_position()
+                print("Releasing wire and shutting down...")
+                ctrl.rest_tension()
                 break
             elif cmd == 'o':
-                controller.open_finger()
+                ctrl.release_wire()
             elif cmd == 'c':
-                controller.close_finger()
+                ctrl.full_pull()
             elif cmd == 't':
-                controller.thread_hold()
+                ctrl.thread_grip()
+            elif cmd == 'l':
+                ctrl.light_curl()
             elif cmd == 'r':
-                controller.rest_position()
+                ctrl.rest_tension()
             elif cmd == 'k':
-                controller.thread_keep_sequence()
+                ctrl.thread_keep_sequence()
+            elif cmd == '+':
+                ctrl.increase_tension()
+            elif cmd == '-':
+                ctrl.decrease_tension()
+            elif cmd == '?':
+                ctrl.status()
             else:
                 try:
                     angle = int(cmd)
                     if 0 <= angle <= 180:
-                        controller.smooth_move(angle)
+                        ctrl.smooth_move(angle)
                     else:
                         print("Angle must be 0-180")
                 except ValueError:
-                    print(f"Unknown command: {cmd}")
+                    print(f"Unknown: {cmd}")
 
         except KeyboardInterrupt:
-            print("\nInterrupted. Returning to rest...")
-            controller.rest_position()
+            print("\nReleasing wire...")
+            ctrl.rest_tension()
             break
         except EOFError:
             break
 
-    controller.cleanup()
+    ctrl.cleanup()
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Robotic Finger Servo Controller"
-    )
-    parser.add_argument(
-        "--mode", choices=["gpio", "serial"], default="serial",
-        help="Control mode: gpio (Raspberry Pi) or serial (Arduino)"
-    )
-    parser.add_argument(
-        "--port", default="/dev/ttyUSB0",
-        help="Serial port for Arduino (default: /dev/ttyUSB0)"
-    )
-    parser.add_argument(
-        "--baud", type=int, default=SERIAL_BAUD,
-        help=f"Serial baud rate (default: {SERIAL_BAUD})"
-    )
-
+    parser = argparse.ArgumentParser(description="Wire Tendon Finger Controller")
+    parser.add_argument("--mode", choices=["gpio", "serial"], default="serial")
+    parser.add_argument("--port", default="/dev/ttyUSB0")
+    parser.add_argument("--baud", type=int, default=SERIAL_BAUD)
     args = parser.parse_args()
 
     if args.mode == "gpio":
-        controller = GPIOServoController()
+        ctrl = GPIOTendonController()
     else:
-        controller = SerialServoController(port=args.port, baud=args.baud)
+        ctrl = SerialTendonController(port=args.port, baud=args.baud)
 
-    interactive_control(controller)
+    interactive_control(ctrl)
 
 
 if __name__ == "__main__":

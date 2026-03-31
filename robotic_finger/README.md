@@ -1,35 +1,61 @@
-# Soft Robotic Finger - TPU Print-in-Place
+# Soft Robotic Finger - Wire Tendon Driven (TPU)
 
-A soft robotics style 3D-printable finger for thread keeping, controlled by servo motor. **Prints as a single piece in TPU - no assembly required!**
+A soft robotics 3D-printable finger with a **wire tendon actuation system** for thread keeping, controlled by servo motor. Prints as a single piece in TPU - minimal assembly!
 
 ## Overview
 
 ```
-  DORSAL (back) - strain limiting layer
+  DORSAL (back) - strain limiting layer + extensor wire
   ┌──────────────────────────────────────────────────────────────────┐
   │ ┌──────┐╔══╗┌──────┐╔══╗┌─────┐╔═╗┌──────────╮                │
   │ │ Base ││MCP││Middle││PIP││ Tip ││D││Fingertip │⊃ ← Thread     │
   │ │ Seg  ││   ││ Seg  ││   ││ Seg ││I││  + Hook  │⊃   Keeper     │
-  │ └──────┘╚══╝└──────┘╚══╝└─────┘╚═╝└──────────╯                │
+  │ └──┬───┘╚══╝└──────┘╚══╝└─────┘╚═╝└────┬─────╯                │
+  │    │                                     │                       │
+  │ Bowden                             Wire anchor                   │
+  │ entry                              (crimp)                       │
   └──────────────────────────────────────────────────────────────────┘
-  PALM (bottom) - bellows cuts allow bending
-           ═══ ← tendon runs through center
+  PALM (bottom) - bellows cuts + flexor wire
 
-  ╔══╗ = Bellows joints (accordion folds in TPU)
-  ⊃    = Thread keeper C-hook with guide grooves
+  ╔══╗ = Bellows joints with tendon pulleys
+  ───  = Wire cable through PTFE tube guides
 ```
 
-## Key Soft Robotics Features
+## Wire Tendon System
 
-| Feature | Description |
-|---------|-------------|
-| **Bellows Joints** | Accordion-style folds that compress when tendon pulls, allowing natural bending |
-| **Asymmetric Cuts** | Palm-side cuts are deeper than dorsal - finger curls inward only |
-| **Strain Limiting** | Thin reinforced dorsal layer prevents over-extension |
-| **Print-in-Place** | Entire finger is ONE piece - zero assembly |
-| **Tendon Channel** | Internal tube runs full length for fishing line/cable |
-| **Grip Texture** | Biomimetic micro-bumps on palm side |
-| **Thread Keeper** | C-shaped hook with guide grooves at fingertip |
+```
+                    ┌─────────────────────────────────┐
+                    │         FINGER (TPU)             │
+                    │                                  │
+  ┌────────┐  Bowden│  PTFE    Pulley   PTFE   Pulley │  Anchor
+  │ Servo  │  sheath│  seat   redirect  seat  redirect│  (crimp)
+  │ Spool  │════════╪══[==]════◎════[==]══◎═══════════╪══●
+  │        │        │  guide         guide             │
+  └────────┘        │         FLEXOR WIRE              │
+                    └─────────────────────────────────┘
+
+  Servo winds spool → wire pulls through Bowden sheath →
+  enters finger base → PTFE tube guides in rigid segments →
+  redirects around pulleys at bellows joints →
+  anchors at fingertip crimp cavity → finger CURLS
+```
+
+### How It Works
+
+1. **Servo spool** winds the wire cable (0.5-0.8mm stainless steel or Dyneema)
+2. **Bowden sheath** (1mm PTFE tube) routes wire from servo to finger base
+3. **PTFE tube seats** in rigid segments provide low-friction wire guides
+4. **Pulley nubs** at each bellows joint redirect wire around the bend axis
+5. **Wire anchor** at fingertip holds the cable via crimp sleeve or knot
+6. **Bellows compress** on palm side as wire pulls → finger curls inward
+7. **TPU elasticity** returns finger to straight when wire is released
+
+### Dual Tendon System
+
+| Tendon | Side | Wire | Function |
+|--------|------|------|----------|
+| **Flexor** | Palm (bottom) | 0.8mm cable | Pulls finger closed |
+| **Extensor** | Dorsal (top) | 0.5mm cable | Returns finger open (backup to TPU spring) |
 
 ## Structure
 
@@ -39,107 +65,84 @@ robotic_finger/
 │   ├── robotic_finger.scad              # Main parametric 3D model (OpenSCAD)
 │   └── robotic_finger_stl_export.scad   # STL export helper
 ├── servo_control/
-│   ├── finger_servo_control.ino         # Arduino servo controller
+│   ├── finger_servo_control.ino         # Arduino wire tendon controller
 │   └── finger_servo_control.py          # Python controller (RPi / Serial)
 └── README.md
 ```
 
-## TPU Printing Guide
+## Hardware Required
 
-### Recommended TPU Filaments
-- **NinjaFlex 85A** - Most flexible, best bellows action
-- **eSUN TPU 95A** - Good balance of flex and printability
-- **Sainsmart TPU 95A** - Budget-friendly, reliable
-- **Overture TPU 95A** - Widely available
+| Component | Specification | Purpose |
+|-----------|--------------|---------|
+| Servo Motor | SG90 or MG90S | Winds/unwinds wire spool |
+| Flexor Wire | 0.5-0.8mm stainless cable or braided Dyneema | Main tendon - closes finger |
+| Extensor Wire | 0.3-0.5mm cable (optional) | Return tendon - opens finger |
+| Bowden Sheath | 1mm ID / 2mm OD PTFE tube, ~15cm | Routes wire from servo to finger |
+| PTFE Tube | 1mm ID, cut to 4mm pieces (x4) | Press-fit guides in rigid segments |
+| Crimp Sleeves | 1mm aluminum crimp (x2) | Anchor wire at fingertip |
+| Controller | Arduino Uno/Nano or Raspberry Pi | Drives servo |
+| Thread | Any sewing/craft thread | For testing thread keeper |
 
-### Print Settings
+**No bolts, pins, or springs needed!** TPU flexibility replaces mechanical joints. Wire + Bowden replaces rigid linkages.
 
-| Setting | Value | Notes |
-|---------|-------|-------|
-| **Layer Height** | 0.2mm | 0.16mm for finer bellows |
-| **Nozzle** | 0.4mm | |
-| **Infill** | 15-25% | Gyroid pattern recommended |
-| **Print Speed** | 20-30 mm/s | Slower = better for TPU |
-| **Travel Speed** | 100 mm/s | |
-| **Retraction** | 1-2mm direct / OFF bowden | TPU jams with too much retraction |
-| **Temperature** | 220-235°C | Check your filament specs |
-| **Bed Temp** | 50-60°C | |
-| **Cooling Fan** | 50-80% | |
-| **Supports** | **NONE** | Designed supportless! |
-| **Brim** | 5-8mm | Helps TPU bed adhesion |
-| **Flow Rate** | 100-105% | Slight over-extrusion helps seal |
+## 3D Printing
 
-### Print Order (Recommended)
-1. **Print bellows test piece first** (`PART = 2` in export helper)
-   - Test that folds flex properly
-   - Adjust speed/temp if folds fuse together
-2. **Print full finger** (`PART = 0`)
-3. **Print servo mount** (`PART = 1`)
+### Parts to Print
 
-### Troubleshooting TPU
+| Part | Material | PART # | Notes |
+|------|----------|--------|-------|
+| Soft Finger | **TPU 95A** | 0 | Single print-in-place piece |
+| Servo Mount | **TPU 95A** | 1 | Snap-fit servo cradle + Bowden anchor posts |
+| Tendon Spool | **PLA** | 2 | Rigid spool - fits on servo horn |
+| Bellows Test | **TPU 95A** | 3 | Print first to calibrate settings! |
 
-| Problem | Solution |
-|---------|----------|
-| Bellows folds fused shut | Lower temp 5°C, increase fan, slow down |
-| Stringing between folds | Reduce retraction to 0.5mm, enable coasting |
-| Poor bed adhesion | Use glue stick, increase brim to 10mm |
-| Tendon channel blocked | Thread fishing line during print (pause at 50%) |
-| Finger too stiff | Reduce infill to 10%, use 85A TPU |
-| Finger too floppy | Increase infill to 30%, use 95A TPU |
+### TPU Print Settings
 
-## How It Works
+| Setting | Value |
+|---------|-------|
+| Layer Height | 0.2mm |
+| Infill | 15-25% gyroid |
+| Speed | 20-30 mm/s |
+| Retraction | 1-2mm direct / OFF bowden |
+| Temp | 220-235°C |
+| Bed | 50-60°C |
+| Supports | **NONE** |
+| Brim | 5-8mm |
 
-### Tendon-Driven Bending
-```
-    RELAXED (tendon slack)          GRIPPING (tendon pulled)
-    ┌─────────────────┐              ┌─────────╮
-    │ ═══════════════ │              │ ════╗   │
-    │ bellows open    │    ──►       │     ║ ╔═╝
-    └─────────────────┘              └─────╚═╝
-         ═ tendon                    bellows compress
-                                     on palm side
-```
+### STL Export
+1. Open `robotic_finger_stl_export.scad` in OpenSCAD
+2. Set `PART` variable (0-5)
+3. F6 to render → File > Export > STL
 
-1. Servo pulls tendon (fishing line running through internal channel)
-2. Bellows folds **compress on palm side** (where cuts are deepest)
-3. Dorsal strain layer prevents stretching on back side
-4. Result: finger **curls inward** naturally - just like a real finger!
-5. Release tendon → TPU elasticity returns finger to straight
+## Assembly
 
-### Thread Keeping
-1. Servo moves finger to open position
-2. Thread is placed across the C-hook at fingertip
-3. Servo pulls tendon → finger curls and **pinches thread** against hook
-4. Guide grooves prevent thread from slipping sideways
-5. Release: servo relaxes → finger opens → thread released
-
-## Hardware
-
-| Component | Specification |
-|-----------|--------------|
-| Servo Motor | SG90 or MG90S micro servo |
-| Tendon | 0.5mm braided fishing line (PE braid) |
-| Controller | Arduino Uno/Nano or Raspberry Pi |
-| Strain Layer | (Optional) Strip of paper/fabric glued on dorsal side |
-| Thread | Any sewing/craft thread |
-
-**No bolts, pins, or springs needed!** The TPU flexibility replaces all mechanical joints.
-
-## Assembly (Minimal!)
-
-1. **Print the finger** (single piece!)
-2. **Thread the tendon**: Push fishing line through the internal channel from base to tip. Tie a knot at the fingertip anchor cavity.
-3. **Attach to servo**: Loop tendon around servo horn or use a crimp
-4. **Mount servo** in the TPU servo cradle (snap-fit, no screws needed)
-5. **(Optional)** Glue a thin paper/fabric strip along the dorsal surface for extra strain limiting
-6. Done!
+1. **Print** finger (TPU), servo mount (TPU), spool (PLA)
+2. **Cut PTFE tube** into 4mm pieces for guide seats + one ~15cm piece for Bowden sheath
+3. **Press-fit** PTFE tube pieces into the guide seats in rigid segments
+4. **Thread flexor wire**: Push cable from base entry → through PTFE guides → over pulleys → into fingertip anchor cavity. Crimp the end.
+5. **Thread extensor wire** (optional): Same route on dorsal side
+6. **Insert Bowden sheath** into base entry port. Thread wire through sheath back to servo.
+7. **Mount spool** on servo horn
+8. **Wrap wire** around spool, clamp with set screw
+9. **Snap servo** into mount cradle
+10. **Test**: Send `o` (open) and `c` (close) commands to verify wire pull
 
 ## Servo Control
 
-Same control code works for both rigid and soft versions.
-
 ### Arduino
-Upload `finger_servo_control.ino` - serial commands: `o`pen, `c`lose, `t`hread hold, `k` auto sequence.
+Upload `finger_servo_control.ino`. Serial commands (9600 baud):
+
+| Command | Action | Servo Angle |
+|---------|--------|-------------|
+| `o` | Release wire (open) | 10° |
+| `c` | Full pull (close) | 160° |
+| `t` | Thread grip tension | 110° |
+| `l` | Light curl | 60° |
+| `r` | Rest pretension | 45° |
+| `k` | Thread keep sequence | auto |
+| `+` / `-` | Adjust tension ±15° | current ±15 |
+| `0-180` | Exact spool angle | as specified |
+| `?` | Show status | - |
 
 ### Python
 ```bash
@@ -147,20 +150,28 @@ pip install pyserial
 python finger_servo_control.py --mode serial --port /dev/ttyUSB0
 ```
 
+## Thread Keeping Sequence (`k` command)
+
+```
+Step 1: Release wire      → Finger opens fully (place thread in hook)
+Step 2: Light pull        → Finger begins to curl around thread
+Step 3: Thread grip pull  → Finger closes on thread with medium tension
+Step 4: Oscillate ±5°     → Seats thread into guide grooves on hook
+Step 5: Hold steady       → Maintains constant grip tension
+```
+
 ## Customization
 
-All dimensions are parametric in `robotic_finger.scad`:
+Key parameters in `robotic_finger.scad`:
 
-| Parameter | Default | Effect |
-|-----------|---------|--------|
-| `finger_total_length` | 85mm | Overall finger size |
-| `bellows_count_mcp` | 5 | More folds = more flex at base joint |
-| `bellows_fold_depth` | 3.0mm | Deeper = more bend range |
-| `bellows_floor` | 1.5mm | Min wall at fold - structural safety |
-| `strain_layer_thick` | 0.8mm | Dorsal stiffness (thicker = less backbend) |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `finger_total_length` | 85mm | Overall size |
+| `flexor_wire_dia` | 1.0mm | Flexor cable diameter |
+| `flexor_channel_dia` | 1.8mm | Channel bore (fits PTFE tube) |
+| `bellows_count_mcp` | 5 | More folds = more flex range |
+| `bellows_fold_depth` | 3.0mm | Deeper = more bend per fold |
+| `pulley_radius` | 2.5mm | Wire redirect radius at joints |
+| `bowden_sheath_od` | 4.0mm | Bowden tube outer diameter |
+| `spool_radius` | 5.0mm | Wire wrap radius on servo horn |
 | `keeper_hook_radius` | 4.0mm | Thread hook size |
-| `use_pneumatic` | false | Set true for air-powered instead of tendon |
-
-## Optional: Pneumatic Actuation
-
-Set `use_pneumatic = true` in the SCAD file to generate internal air chambers instead of tendon-only actuation. Connect a small air pump or syringe to inflate the bellows chambers for bending.
