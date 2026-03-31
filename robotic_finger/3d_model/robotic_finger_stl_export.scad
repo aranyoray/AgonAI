@@ -16,7 +16,7 @@
 
 PART = 0;  // <-- Change this to select part
 
-include <robotic_finger.scad>;
+use <robotic_finger.scad>;
 
 if (PART == 0) {
     // The entire finger prints as ONE piece - no assembly!
