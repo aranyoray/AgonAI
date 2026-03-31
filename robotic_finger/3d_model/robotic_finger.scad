@@ -84,6 +84,13 @@ wire_anchor_depth     = 4.0;    // Depth of anchor pocket (mm)
 wire_clamp_slot_w     = 1.5;    // Slot for wire clamp/crimp sleeve
 wire_clamp_slot_h     = 2.0;
 
+// --- Wire Insertion Holes ---
+// Open side slots and top/bottom access holes for threading real wire
+wire_insert_slot_w    = 1.5;    // Side slot width for wire insertion (mm)
+wire_insert_slot_d    = 3.0;    // Slot depth into body (mm)
+wire_exit_hole_dia    = 2.5;    // Hole at fingertip end to pull wire through (mm)
+wire_base_entry_dia   = 3.0;    // Entry hole diameter at finger base (mm)
+
 // --- Pulley System at Joints ---
 pulley_radius         = 2.5;    // Tendon redirect pulley radius (mm)
 pulley_width          = 3.0;    // Pulley groove width (mm)
@@ -244,6 +251,34 @@ module joint_pulleys() {
 }
 
 
+/* ===== WIRE INSERTION SIDE SLOTS ===== */
+// Open slots from the side surface into the tendon channel so you
+// can push real wire in from the side, slide it along, then it
+// drops into the channel. Slots are narrow enough that the wire
+// stays in during operation.
+
+module wire_side_insertion_slot(z_pos, channel_dia, length) {
+    // Slot cut from one side of the finger into the tendon channel
+    // Located at mid-length of each rigid segment
+    translate([length/2, -W/2 - 0.1, z_pos - wire_insert_slot_w/2])
+        cube([channel_dia + 1, wire_insert_slot_d + W/2 + 0.1, wire_insert_slot_w]);
+}
+
+// Vertical access hole from top or bottom surface to tendon channel
+// for inserting wire with a needle or threader tool
+module wire_vertical_access(x_pos, z_pos, from_top) {
+    if (from_top) {
+        // Hole from dorsal (top) surface down to channel
+        translate([x_pos, 0, z_pos])
+            cylinder(d = wire_exit_hole_dia, h = H, center = false);
+    } else {
+        // Hole from palm (bottom) surface up to channel
+        translate([x_pos, 0, -0.1])
+            cylinder(d = wire_exit_hole_dia, h = z_pos + 0.2);
+    }
+}
+
+
 /* ===== SOFT BODY SEGMENT WITH TENDON ROUTING ===== */
 
 module soft_segment(length, width, height) {
@@ -257,6 +292,10 @@ module soft_segment(length, width, height) {
 
         // PTFE tube seats
         ptfe_tube_seats(length);
+
+        // Wire insertion side slots (one per tendon, at segment midpoint)
+        wire_side_insertion_slot(flexor_z, flexor_channel_dia, length);
+        wire_side_insertion_slot(extensor_z, extensor_channel_dia, length);
     }
 }
 
@@ -312,12 +351,20 @@ module bellows_joint(length, width, height, num_folds) {
 
         // Dual tendon channels through joint
         tendon_channels(length);
+
+        // Wire access holes at joint center (top/bottom surface)
+        // Allows threading a needle down into the channel at each joint
+        wire_vertical_access(length/2, flexor_z, false);   // bottom hole to flexor
+        wire_vertical_access(length/2, extensor_z, true);   // top hole to extensor
     }
 }
 
 
 /* ===== BOWDEN SHEATH ENTRY PORT ===== */
-// At the base of the finger - Bowden cable sheath plugs in here
+// Open entry at finger base for inserting wire from outside.
+// Wire pushes straight through from the back of the finger
+// into the internal tendon channel. Bowden sheath press-fits
+// into the socket to guide wire from servo to finger.
 
 module bowden_entry_port() {
     difference() {
@@ -325,51 +372,67 @@ module bowden_entry_port() {
         translate([0, 0, 0])
             rounded_box(bowden_entry_depth + 3, W * 0.5, H * 0.7, 2);
 
-        // Flexor Bowden sheath socket
-        translate([-bowden_entry_depth/2, flexor_offset_y, flexor_z - H/2 + H*0.35])
+        // Flexor: open entry hole (wire pushes in from outside)
+        translate([-(bowden_entry_depth + 2), flexor_offset_y, flexor_z - H/2 + H*0.35])
+            rotate([0, 90, 0])
+                cylinder(d = wire_base_entry_dia, h = bowden_entry_depth * 4);
+
+        // Flexor: Bowden sheath socket (sheath slides in after wire is threaded)
+        translate([-bowden_entry_depth/2 - 1, flexor_offset_y, flexor_z - H/2 + H*0.35])
             rotate([0, 90, 0])
                 cylinder(d = bowden_sheath_od + 0.3, h = bowden_entry_depth);
 
-        // Flexor wire through-hole
-        translate([-bowden_entry_depth, flexor_offset_y, flexor_z - H/2 + H*0.35])
+        // Extensor: open entry hole
+        translate([-(bowden_entry_depth + 2), extensor_offset_y, extensor_z - H/2 + H*0.35])
             rotate([0, 90, 0])
-                cylinder(d = flexor_channel_dia, h = bowden_entry_depth * 3);
+                cylinder(d = wire_base_entry_dia, h = bowden_entry_depth * 4);
 
-        // Extensor Bowden sheath socket
-        translate([-bowden_entry_depth/2, extensor_offset_y, extensor_z - H/2 + H*0.35])
+        // Extensor: Bowden sheath socket
+        translate([-bowden_entry_depth/2 - 1, extensor_offset_y, extensor_z - H/2 + H*0.35])
             rotate([0, 90, 0])
                 cylinder(d = bowden_sheath_od + 0.3, h = bowden_entry_depth);
-
-        // Extensor wire through-hole
-        translate([-bowden_entry_depth, extensor_offset_y, extensor_z - H/2 + H*0.35])
-            rotate([0, 90, 0])
-                cylinder(d = extensor_channel_dia, h = bowden_entry_depth * 3);
     }
 }
 
 
 /* ===== WIRE ANCHOR AT FINGERTIP ===== */
+// Exit holes at the fingertip so you can:
+// 1. Push a needle/threader through from the base
+// 2. Pull the wire out through the exit hole at the tip
+// 3. Tie a knot or crimp a sleeve on the wire end
+// 4. Pull it back so the knot/crimp seats into the anchor cavity
 
 module wire_anchor_cavity() {
-    // Flexor wire anchor - cavity for crimp sleeve or knot
+    // Flexor wire anchor
     translate([0, flexor_offset_y, flexor_z]) {
-        // Main anchor pocket
+        // Anchor pocket (knot or crimp sits here)
         sphere(d = wire_anchor_cavity);
-        // Wire entry
-        translate([-wire_anchor_depth, 0, 0])
+        // Wire channel entry from finger body
+        translate([-wire_anchor_depth - 2, 0, 0])
             rotate([0, 90, 0])
-                cylinder(d = flexor_channel_dia, h = wire_anchor_depth);
-        // Clamp slot (insert crimp sleeve)
+                cylinder(d = flexor_channel_dia, h = wire_anchor_depth + 2);
+        // EXIT HOLE: wire pull-through to outside of fingertip
+        translate([0, 0, 0])
+            rotate([0, 90, 0])
+                cylinder(d = wire_exit_hole_dia, h = wire_anchor_depth + 5);
+        // Clamp slot (insert crimp sleeve from the side)
         translate([0, -wire_clamp_slot_w/2, -wire_clamp_slot_h/2])
-            cube([wire_anchor_depth, wire_clamp_slot_w, wire_clamp_slot_h]);
+            cube([wire_anchor_depth + 3, wire_clamp_slot_w, wire_clamp_slot_h]);
+        // Side access slot to drop crimp in
+        translate([-wire_clamp_slot_w/2, -W/2 - 0.1, -wire_clamp_slot_h/2])
+            cube([wire_clamp_slot_w, wire_insert_slot_d + W/2 + 0.1, wire_clamp_slot_h]);
     }
 
     // Extensor wire anchor
     translate([0, extensor_offset_y, extensor_z]) {
         sphere(d = wire_anchor_cavity * 0.8);
-        translate([-wire_anchor_depth, 0, 0])
+        translate([-wire_anchor_depth - 2, 0, 0])
             rotate([0, 90, 0])
-                cylinder(d = extensor_channel_dia, h = wire_anchor_depth);
+                cylinder(d = extensor_channel_dia, h = wire_anchor_depth + 2);
+        // EXIT HOLE for extensor wire
+        translate([0, 0, 0])
+            rotate([0, 90, 0])
+                cylinder(d = wire_exit_hole_dia, h = wire_anchor_depth + 5);
     }
 }
 
@@ -624,33 +687,15 @@ module full_soft_assembly() {
     translate([-base_width/2, 0, -base_height - servo_body_h - 2])
         soft_servo_mount();
 
-    // Soft finger with wire tendon system
+    // Soft finger with real wire holes (no dummy wires)
     soft_finger();
-
-    // Visualize wire paths
-    wire_visualization();
-}
-
-// Wire path visualization (not for printing - just to show routing)
-module wire_visualization() {
-    // Flexor wire (red) - palm side
-    color("Red", 0.6)
-    translate([-5, flexor_offset_y, flexor_z])
-        rotate([0, 90, 0])
-            cylinder(d = flexor_wire_dia, h = L + 10);
-
-    // Extensor wire (blue) - dorsal side
-    color("Blue", 0.6)
-    translate([-5, extensor_offset_y, extensor_z])
-        rotate([0, 90, 0])
-            cylinder(d = extensor_wire_dia, h = L + 10);
 }
 
 
 /* ===== RENDER SELECTION ===== */
 // Uncomment desired output:
 
-// Full assembly with wire visualization
+// Full assembly
 full_soft_assembly();
 
 // Just the finger (for printing)
