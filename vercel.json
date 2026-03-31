@@ -1,22 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "api/chat.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/simulate.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/chat",
-      "dest": "api/chat.py"
-    },
-    {
-      "src": "/api/simulate",
-      "dest": "api/simulate.py"
-    }
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/chat", "destination": "/api/chat" },
+    { "source": "/api/simulate", "destination": "/api/simulate" }
   ]
 }
