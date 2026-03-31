@@ -161,7 +161,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Default to a Gemini model; allow override via body["model"]
-            model = body.get("model") or "gemini-1.5-flash"
+            model = body.get("model") or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
             if not isinstance(model, str):
                 model = str(model)
 
