@@ -1,48 +1,38 @@
 // ============================================================
-// STL Export Helper - Robotic Finger Parts
+// STL Export Helper - Soft Robotic Finger (TPU)
 // ============================================================
-// Use this file to export individual parts as STL files.
+// Export parts for TPU 3D printing.
 // In OpenSCAD: Design > Render (F6), then File > Export > STL
 //
-// Change the PART variable to export each piece:
-//   0 = Proximal phalanx
-//   1 = Middle phalanx
-//   2 = Distal phalanx (with thread keeper)
-//   3 = Servo mount base
-//   4 = Tendon anchor
-//   5 = Joint pin (print 2x)
-//   6 = Full print plate
+// PART selection:
+//   0 = Complete soft finger (single print-in-place piece!)
+//   1 = Servo mount base
+//   2 = Bellows test piece (print first to calibrate TPU!)
+//   3 = Thread keeper test piece
+//   4 = Full assembly (visualization only, not for printing)
+//   5 = Single bellows joint (5 folds)
+//   6 = Single bellows joint (3 folds)
 // ============================================================
 
-PART = 6;  // <-- Change this number to select part
+PART = 0;  // <-- Change this to select part
 
 include <robotic_finger.scad>;
 
 if (PART == 0) {
-    phalanx(proximal_len, finger_width, finger_thickness, false, true);
+    // The entire finger prints as ONE piece - no assembly!
+    soft_finger();
 } else if (PART == 1) {
-    phalanx(middle_len, finger_width, finger_thickness, true, true);
+    soft_servo_mount();
 } else if (PART == 2) {
-    distal_phalanx();
+    // Test piece: small bellows section to calibrate your TPU settings
+    // Print this FIRST before printing the full finger
+    bellows_joint(15, W, H, 4);
 } else if (PART == 3) {
-    servo_mount();
+    thread_keeper_tip(ftip_len, W, H);
 } else if (PART == 4) {
-    tendon_anchor();
+    full_soft_assembly();
 } else if (PART == 5) {
-    joint_pin();
+    bellows_joint(18, W, H, 5);
 } else if (PART == 6) {
-    // Full print plate - all parts
-    phalanx(proximal_len, finger_width, finger_thickness, false, true);
-    translate([0, 25, 0])
-        phalanx(middle_len, finger_width, finger_thickness, true, true);
-    translate([0, 50, 0])
-        distal_phalanx();
-    translate([0, 85, 0])
-        servo_mount();
-    translate([65, 0, 0])
-        tendon_anchor();
-    translate([65, 20, 0])
-        joint_pin();
-    translate([65, 30, 0])
-        joint_pin();
+    bellows_joint(12, W, H, 3);
 }

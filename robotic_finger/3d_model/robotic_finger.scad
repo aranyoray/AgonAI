@@ -1,356 +1,480 @@
 // ============================================================
-// Robotic Finger with Thread Keeper - Servo Motor Controlled
+// Soft Robotic Finger - TPU Print-in-Place
+// Thread Keeper with Servo Motor Control
 // ============================================================
-// A parametric 3D model of a robotic finger designed to hold
-// thread and be actuated by a micro servo motor (SG90/MG90S).
+// A soft robotics style finger designed for TPU/TPE flexible
+// filament. Features bellows joints, integrated tendon channel,
+// and print-in-place design requiring NO assembly.
 //
 // Print Settings:
-//   Material: PLA or PETG
+//   Material: TPU 95A (NinjaFlex, eSUN TPU, Sainsmart TPU)
 //   Layer Height: 0.2mm
-//   Infill: 30-50%
-//   Supports: Yes (for joint areas)
+//   Nozzle: 0.4mm
+//   Infill: 15-25% (gyroid pattern recommended)
+//   Speed: 20-30 mm/s (slow for TPU)
+//   Retraction: Minimal (1-2mm direct drive, OFF for bowden)
+//   Supports: NONE needed (designed for supportless print)
+//   Fan: 50-80%
+//   Temp: 220-235°C (varies by TPU brand)
+//   Bed: 50-60°C
+//   Orientation: Print flat on bed, finger pointing up (+X)
 // ============================================================
 
-/* ---- Global Parameters ---- */
+/* ===== PARAMETRIC CONFIGURATION ===== */
 
-// Finger dimensions
-finger_length       = 70;    // Total finger length (mm)
-finger_width        = 16;    // Width of each phalanx (mm)
-finger_thickness    = 12;    // Thickness/depth of phalanx (mm)
-wall_thickness      = 2.0;   // Shell wall thickness (mm)
+// --- Overall Finger ---
+finger_total_length = 85;     // Total finger length (mm)
+finger_width        = 18;     // Width of finger body (mm)
+finger_height       = 14;     // Height/thickness of finger (mm)
+corner_radius       = 3;      // Body corner rounding (mm)
 
-// Phalanx proportions (fraction of total length)
-proximal_ratio  = 0.45;
-middle_ratio    = 0.30;
-distal_ratio    = 0.25;
+// --- Soft Bellows Joints ---
+bellows_count_mcp   = 5;      // Number of bellows folds at base joint (MCP)
+bellows_count_pip   = 4;      // Number of bellows folds at middle joint (PIP)
+bellows_count_dip   = 3;      // Number of bellows folds at tip joint (DIP)
+bellows_fold_depth  = 3.0;    // How deep each fold cuts in (mm)
+bellows_fold_width  = 1.2;    // Width of each fold (mm)
+bellows_gap         = 0.6;    // Gap between folds (mm)
+bellows_floor       = 1.5;    // Minimum wall at deepest fold (mm) - strain limiter
 
-// Joint parameters
-joint_radius        = 4.0;   // Hinge pin radius (mm)
-joint_gap           = 1.0;   // Gap between phalanges at joint (mm)
-pin_diameter        = 3.0;   // M3 pin/bolt diameter (mm)
-pin_clearance       = 0.3;   // Clearance for pin holes (mm)
+// --- Segment Proportions ---
+// (base_seg + mcp + mid_seg + pip + tip_seg + dip + fingertip = 1.0)
+base_seg_ratio      = 0.18;   // Base/mount segment
+mcp_joint_ratio     = 0.14;   // MCP bellows joint
+mid_seg_ratio       = 0.16;   // Middle rigid segment
+pip_joint_ratio     = 0.12;   // PIP bellows joint
+tip_seg_ratio       = 0.14;   // Tip segment
+dip_joint_ratio     = 0.10;   // DIP bellows joint
+fingertip_ratio     = 0.16;   // Fingertip with thread keeper
 
-// Tendon/thread channel
-tendon_channel_dia  = 2.5;   // Diameter of tendon routing channel (mm)
-thread_slot_width   = 3.0;   // Width of thread keeper slot (mm)
-thread_slot_depth   = 2.0;   // Depth of thread keeper slot (mm)
+// --- Tendon Channel ---
+tendon_dia          = 2.0;    // Tendon channel diameter (mm) - for fishing line/cable
+tendon_offset_z     = -2.0;   // Tendon offset below center (closer to palm side)
+tendon_guide_dia    = 3.5;    // Tendon guide tube inner diameter at entry
 
-// Servo mount parameters (SG90 micro servo)
-servo_body_w        = 23.0;  // Servo body width (mm)
-servo_body_d        = 12.5;  // Servo body depth (mm)
-servo_body_h        = 22.0;  // Servo body height (mm)
-servo_tab_w         = 32.0;  // Width including mounting tabs (mm)
-servo_tab_h         = 2.5;   // Tab thickness (mm)
-servo_tab_offset    = 16.0;  // Tab position from bottom (mm)
-servo_horn_dia      = 7.0;   // Servo horn hub diameter (mm)
-servo_screw_dia     = 2.2;   // Servo mounting screw diameter (mm)
+// --- Strain Limiting ---
+strain_layer_thick  = 0.8;    // Inextensible dorsal (back) layer thickness
+strain_embed_depth  = 0.5;    // Depth of fabric/paper embedding channel (dorsal side)
 
-// Thread keeper on distal tip
-keeper_hook_radius  = 3.0;
-keeper_hook_thick   = 2.0;
-keeper_slot_count   = 3;     // Number of thread guide slots
+// --- Thread Keeper (Fingertip) ---
+keeper_hook_radius  = 4.0;    // Thread hook inner radius
+keeper_wall         = 1.8;    // Hook wall thickness
+keeper_slots        = 3;      // Number of thread guide grooves
+keeper_slot_dia     = 1.5;    // Thread groove diameter
+keeper_opening_ang  = 70;     // Hook opening angle (degrees)
 
-// Base/mount plate
-base_width          = 50;
-base_depth          = 40;
-base_height         = 5;
+// --- Grip Texture (Palm Side) ---
+grip_bump_dia       = 1.5;    // Micro grip bump diameter
+grip_bump_height    = 0.6;    // Bump height
+grip_bump_spacing   = 3.0;    // Space between bumps
 
-// Resolution
-$fn = 48;
+// --- Servo Mount Base ---
+base_width          = 45;
+base_depth          = 35;
+base_height         = 6;
+servo_body_w        = 23.0;   // SG90 body width
+servo_body_d        = 12.5;   // SG90 body depth
+servo_body_h        = 22.0;   // SG90 body height
+servo_tab_w         = 32.0;   // Tab-to-tab width
+servo_screw_dia     = 2.2;
+
+// --- Pneumatic Air Chamber (optional) ---
+// Set use_pneumatic = true for pneumatic actuation instead of tendon
+use_pneumatic       = false;
+air_chamber_wall    = 1.5;    // Pneumatic chamber wall thickness
+air_channel_dia     = 3.0;    // Air supply tube diameter
+air_chamber_expand  = 2.5;    // Max expansion gap per bellows
+
+// --- Resolution ---
+$fn = 64;
 
 
-/* ---- Derived Values ---- */
+/* ===== DERIVED DIMENSIONS ===== */
 
-proximal_len = finger_length * proximal_ratio;
-middle_len   = finger_length * middle_ratio;
-distal_len   = finger_length * distal_ratio;
+L = finger_total_length;
+base_len     = L * base_seg_ratio;
+mcp_len      = L * mcp_joint_ratio;
+mid_len      = L * mid_seg_ratio;
+pip_len      = L * pip_joint_ratio;
+tip_len      = L * tip_seg_ratio;
+dip_len      = L * dip_joint_ratio;
+ftip_len     = L * fingertip_ratio;
+
+W = finger_width;
+H = finger_height;
+tendon_z = H/2 + tendon_offset_z;
 
 
-/* ---- Modules ---- */
+/* ===== PRIMITIVE MODULES ===== */
 
-// Rounded box primitive
-module rounded_box(size, radius) {
-    hull() {
-        for (x = [radius, size[0] - radius])
-            for (y = [radius, size[1] - radius])
-                translate([x, y, 0])
-                    cylinder(r = radius, h = size[2]);
-    }
+// Rounded rectangle cross-section (2D)
+module rounded_rect_2d(w, h, r) {
+    offset(r) offset(-r) square([w, h], center = true);
 }
 
-// Single phalanx segment
-module phalanx(length, width, thickness, has_proximal_joint, has_distal_joint) {
+// Rounded box (3D)
+module rounded_box(lx, ly, lz, r) {
+    translate([0, 0, lz/2])
+        hull() {
+            for (x = [-lx/2 + r, lx/2 - r])
+                for (y = [-ly/2 + r, ly/2 - r])
+                    translate([x, y, 0])
+                        cylinder(r = r, h = lz, center = true);
+        }
+}
+
+// Soft body segment (rigid-ish section between bellows)
+module soft_segment(length, width, height) {
     difference() {
-        // Main body
-        rounded_box([length, width, thickness], 2);
+        // Outer body
+        translate([length/2, 0, height/2])
+            rounded_box(length, width, height, corner_radius);
 
-        // Hollow interior (save material)
-        translate([wall_thickness, wall_thickness, wall_thickness])
-            rounded_box([length - 2*wall_thickness,
-                         width - 2*wall_thickness,
-                         thickness - wall_thickness], 1);
-
-        // Tendon channel running through center
-        translate([-1, width/2, thickness/2])
+        // Tendon channel
+        translate([-1, 0, tendon_z])
             rotate([0, 90, 0])
-                cylinder(d = tendon_channel_dia, h = length + 2);
+                cylinder(d = tendon_dia, h = length + 2);
 
-        // Proximal joint socket (female)
-        if (has_proximal_joint) {
-            translate([0, width/2, thickness/2])
-                rotate([0, 90, 0])
-                    cylinder(d = pin_diameter + pin_clearance*2, h = wall_thickness + 1);
-        }
-
-        // Distal joint pin hole
-        if (has_distal_joint) {
-            translate([length - wall_thickness - 0.5, width/2, thickness/2])
-                rotate([0, 90, 0])
-                    cylinder(d = pin_diameter + pin_clearance*2, h = wall_thickness + 1);
-        }
-    }
-
-    // Joint knuckle (male) at distal end
-    if (has_distal_joint) {
-        translate([length + joint_gap/2, width/2, thickness/2])
-            difference() {
-                // Knuckle cylinder
-                rotate([0, 90, 0])
-                    cylinder(r = joint_radius, h = 3, center = true);
-                // Pin hole
-                rotate([0, 90, 0])
-                    cylinder(d = pin_diameter + pin_clearance, h = 5, center = true);
-            }
-    }
-
-    // Joint socket (female) at proximal end
-    if (has_proximal_joint) {
-        difference() {
-            translate([-joint_gap/2 - 1.5, width/2, thickness/2])
-                rotate([0, 90, 0])
-                    cylinder(r = joint_radius + wall_thickness, h = 3, center = true);
-            translate([-joint_gap/2 - 1.5, width/2, thickness/2])
-                rotate([0, 90, 0])
-                    cylinder(r = joint_radius + pin_clearance, h = 4, center = true);
-            // Pin hole through socket
-            translate([-joint_gap/2 - 1.5, width/2, thickness/2])
-                rotate([0, 90, 0])
-                    cylinder(d = pin_diameter + pin_clearance*2, h = 10, center = true);
+        // Pneumatic chamber (if enabled)
+        if (use_pneumatic) {
+            translate([length/2, 0, height/2 + 1])
+                rounded_box(length - air_chamber_wall*2,
+                           width - air_chamber_wall*2,
+                           height - air_chamber_wall*2 - 2,
+                           corner_radius - 1);
         }
     }
 }
 
-// Thread keeper hook on the fingertip
-module thread_keeper() {
-    // Hook shape for thread retention
+
+/* ===== BELLOWS JOINT MODULE ===== */
+// The core soft robotics element - accordion-style folds that
+// allow bending when tendon is pulled. Asymmetric design:
+// - Palm side (bottom): deep cuts allow compression/bending
+// - Dorsal side (top): thin strain-limiting layer prevents over-extension
+
+module bellows_joint(length, width, height, num_folds) {
+    fold_pitch = length / num_folds;
+
     difference() {
-        union() {
-            // Main hook body
-            translate([0, 0, 0])
-                cylinder(r = keeper_hook_radius + keeper_hook_thick, h = finger_width);
+        // Solid block for the joint region
+        translate([length/2, 0, height/2])
+            rounded_box(length, width, height, min(corner_radius, fold_pitch/3));
 
-            // Guide arm
-            translate([0, -keeper_hook_radius - keeper_hook_thick, 0])
-                cube([keeper_hook_radius * 3, keeper_hook_thick, finger_width]);
+        // Bellows cuts from PALM SIDE (bottom) - allows bending
+        for (i = [0 : num_folds - 1]) {
+            x_pos = fold_pitch * (i + 0.5);
+
+            // V-shaped bellows cut from bottom
+            translate([x_pos, 0, -0.1])
+                linear_extrude(height = height - bellows_floor - strain_layer_thick)
+                    rounded_rect_2d(bellows_fold_width, width - bellows_floor * 2,
+                                    bellows_fold_width / 4);
+
+            // Widen the cut at the bottom for better flex
+            translate([x_pos, 0, -0.1])
+                linear_extrude(height = bellows_fold_depth)
+                    rounded_rect_2d(bellows_fold_width * 1.8,
+                                    width - bellows_floor,
+                                    bellows_fold_width / 3);
         }
 
-        // Hook opening
-        cylinder(r = keeper_hook_radius, h = finger_width + 1);
+        // Side relief cuts for lateral compliance
+        for (i = [0 : num_folds - 1]) {
+            x_pos = fold_pitch * (i + 0.5);
+            for (side = [-1, 1]) {
+                translate([x_pos, side * (width/2 + 0.1), height * 0.3])
+                    rotate([0, 0, 0])
+                        linear_extrude(height = height * 0.4)
+                            rounded_rect_2d(bellows_fold_width * 0.8,
+                                            bellows_fold_depth, 0.3);
+            }
+        }
 
-        // Opening slot
-        translate([-keeper_hook_radius - keeper_hook_thick - 1, 0, -0.5])
-            cube([keeper_hook_radius * 2 + keeper_hook_thick + 1,
-                  keeper_hook_radius + keeper_hook_thick + 1,
-                  finger_width + 1]);
+        // Tendon channel passes through joint
+        translate([-1, 0, tendon_z])
+            rotate([0, 90, 0])
+                cylinder(d = tendon_dia, h = length + 2);
 
-        // Thread guide grooves
-        for (i = [0 : keeper_slot_count - 1]) {
-            slot_z = (finger_width / (keeper_slot_count + 1)) * (i + 1);
-            translate([0, 0, slot_z])
-                rotate_extrude()
-                    translate([keeper_hook_radius + keeper_hook_thick/2, 0, 0])
-                        circle(d = thread_slot_width);
+        // Pneumatic expansion chambers between folds
+        if (use_pneumatic) {
+            for (i = [0 : num_folds - 2]) {
+                x_pos = fold_pitch * (i + 1);
+                translate([x_pos, 0, height/2])
+                    rounded_box(fold_pitch - bellows_fold_width,
+                               width - air_chamber_wall*2,
+                               height - air_chamber_wall*3,
+                               1);
+            }
         }
     }
+
+    // Strain-limiting dorsal ridge (top surface reinforcement)
+    translate([length/2, 0, height - strain_layer_thick/2])
+        rounded_box(length, width * 0.6, strain_layer_thick, 1);
 }
 
-// Distal phalanx with thread keeper integrated
-module distal_phalanx() {
+
+/* ===== THREAD KEEPER FINGERTIP ===== */
+
+module thread_keeper_tip(length, width, height) {
     union() {
-        phalanx(distal_len, finger_width, finger_thickness,
-                has_proximal_joint = true, has_distal_joint = false);
+        // Fingertip body (slightly tapered)
+        difference() {
+            hull() {
+                // Base
+                translate([0, 0, height/2])
+                    rounded_box(2, width, height, corner_radius);
+                // Tip (narrower)
+                translate([length * 0.7, 0, height/2])
+                    rounded_box(2, width * 0.7, height * 0.85, corner_radius * 0.7);
+            }
 
-        // Thread keeper at fingertip
-        translate([distal_len + 2, finger_width/2, finger_thickness/2])
+            // Tendon channel to anchor point
+            translate([-1, 0, tendon_z])
+                rotate([0, 90, 0])
+                    cylinder(d = tendon_dia, h = length * 0.8);
+
+            // Tendon anchor cavity (tie-off point)
+            translate([length * 0.65, 0, tendon_z])
+                sphere(d = tendon_dia * 2.5);
+        }
+
+        // Thread keeper hook
+        translate([length * 0.75, 0, height/2])
+            thread_hook(width);
+
+        // Soft grip texture on palm side
+        grip_texture(length * 0.6, width * 0.65, 0);
+    }
+}
+
+// C-shaped hook for thread retention
+module thread_hook(width) {
+    rotate([90, 0, 0])
+    translate([0, 0, -width/2])
+    linear_extrude(height = width)
+    difference() {
+        // Outer hook
+        circle(r = keeper_hook_radius + keeper_wall);
+
+        // Inner opening
+        circle(r = keeper_hook_radius);
+
+        // Hook mouth opening
+        rotate([0, 0, -keeper_opening_ang/2])
+            translate([0, 0])
+                polygon([
+                    [0, 0],
+                    [(keeper_hook_radius + keeper_wall + 1) * cos(0),
+                     (keeper_hook_radius + keeper_wall + 1) * sin(0)],
+                    [(keeper_hook_radius + keeper_wall + 1) * cos(keeper_opening_ang),
+                     (keeper_hook_radius + keeper_wall + 1) * sin(keeper_opening_ang)]
+                ]);
+    }
+
+    // Thread guide grooves (slots cut into the hook)
+    for (i = [0 : keeper_slots - 1]) {
+        y_pos = -width/2 + (width / (keeper_slots + 1)) * (i + 1);
+        translate([0, y_pos, 0])
             rotate([90, 0, 0])
-                translate([0, 0, -finger_width/2])
-                    thread_keeper();
+                translate([keeper_hook_radius + keeper_wall/2, 0, 0])
+                    cylinder(d = keeper_slot_dia, h = keeper_wall + 1, center = true);
+    }
+}
 
-        // Grip texture pads on inner surface
-        for (i = [0 : 3]) {
-            translate([distal_len * 0.2 + i * (distal_len * 0.2),
-                       finger_width/2, -0.5])
-                cylinder(d = 2, h = 1.5);
+
+/* ===== GRIP TEXTURE ===== */
+// Biomimetic micro-bumps on palm side for better thread/object grip
+
+module grip_texture(length, width, z_offset) {
+    cols = floor(length / grip_bump_spacing);
+    rows = floor(width / grip_bump_spacing);
+
+    for (ix = [0 : cols - 1]) {
+        for (iy = [0 : rows - 1]) {
+            // Offset every other row for hexagonal packing
+            x_off = ix * grip_bump_spacing + (iy % 2) * (grip_bump_spacing / 2);
+            y_off = iy * grip_bump_spacing - width/2;
+
+            translate([x_off + grip_bump_spacing/2, y_off + grip_bump_spacing/2, z_offset])
+                sphere(d = grip_bump_dia);
         }
     }
 }
 
-// Servo mounting bracket
-module servo_mount() {
+
+/* ===== TENDON GUIDE TUBES ===== */
+// Small tubes at each joint to keep tendon aligned during bending
+
+module tendon_guide(height) {
+    difference() {
+        cylinder(d = tendon_guide_dia + 1.5, h = height);
+        translate([0, 0, -0.5])
+            cylinder(d = tendon_guide_dia, h = height + 1);
+    }
+}
+
+
+/* ===== STRAIN LIMIT CHANNEL ===== */
+// Dorsal (back) channel for embedding inextensible layer
+// (paper, fabric strip, or fishing line) to prevent over-extension
+
+module strain_limit_channel(length, width) {
+    translate([length/2, 0, H - strain_embed_depth/2])
+        cube([length, width * 0.5, strain_embed_depth], center = true);
+}
+
+
+/* ===== SERVO MOUNT (TPU compatible) ===== */
+
+module soft_servo_mount() {
     difference() {
         union() {
-            // Base plate
-            rounded_box([base_width, base_depth, base_height], 3);
+            // Flexible base plate
+            rounded_box(base_width, base_depth, base_height, 4);
 
-            // Servo cradle walls
-            translate([(base_width - servo_body_w) / 2, (base_depth - servo_body_d) / 2, base_height])
-            difference() {
-                cube([servo_body_w + wall_thickness*2,
-                      servo_body_d + wall_thickness*2,
-                      servo_body_h]);
-                translate([wall_thickness, wall_thickness, -1])
-                    cube([servo_body_w, servo_body_d, servo_body_h + 2]);
+            // Servo cradle with snap-fit walls
+            translate([0, 0, base_height]) {
+                difference() {
+                    rounded_box(servo_body_w + 4, servo_body_d + 4, servo_body_h, 2);
+                    // Servo cavity
+                    translate([0, 0, -0.5])
+                        cube([servo_body_w, servo_body_d, servo_body_h + 1], center = true);
+                }
+
+                // Snap-fit tabs (TPU flex allows snap insertion)
+                for (side = [-1, 1]) {
+                    translate([side * (servo_body_w/2 + 1), 0, servo_body_h * 0.6])
+                        rotate([0, side * 15, 0])
+                            cube([1.5, servo_body_d * 0.4, 3], center = true);
+                }
             }
 
-            // Servo tab supports
-            translate([(base_width - servo_tab_w) / 2,
-                       (base_depth - servo_body_d) / 2 - wall_thickness,
-                       base_height + servo_tab_offset])
-                cube([servo_tab_w, servo_body_d + wall_thickness*4, servo_tab_h]);
+            // Tendon routing post
+            translate([servo_body_w/2 + 5, 0, base_height])
+                difference() {
+                    cylinder(d = 8, h = 10);
+                    translate([0, 0, -1])
+                        cylinder(d = tendon_guide_dia, h = 12);
+                    // Side slot for tendon insertion
+                    translate([0, -0.8, 3])
+                        cube([10, 1.6, 12]);
+                }
+
+            // Finger attachment tab
+            translate([base_width/2 - 2, 0, base_height + servo_body_h])
+                rounded_box(10, W, 4, 2);
         }
 
-        // Servo mounting screw holes
-        for (x_off = [(base_width - servo_tab_w) / 2 + 2,
-                       (base_width + servo_tab_w) / 2 - 2]) {
-            translate([x_off, base_depth / 2,
-                       base_height + servo_tab_offset - 1])
-                cylinder(d = servo_screw_dia, h = servo_tab_h + 2);
-        }
-
-        // Base mounting holes (M3)
-        for (x = [6, base_width - 6])
-            for (y = [6, base_depth - 6])
+        // Base screw holes
+        for (x = [-base_width/2 + 5, base_width/2 - 5])
+            for (y = [-base_depth/2 + 5, base_depth/2 - 5])
                 translate([x, y, -1])
                     cylinder(d = 3.2, h = base_height + 2);
 
-        // Wire routing channel
-        translate([base_width / 2, -1, base_height / 2])
-            rotate([-90, 0, 0])
-                cylinder(d = 5, h = base_depth + 2);
-    }
-}
+        // Servo tab screw holes
+        for (x = [-servo_tab_w/2 + 2, servo_tab_w/2 - 2])
+            translate([x, 0, base_height + 15])
+                rotate([90, 0, 0])
+                    cylinder(d = servo_screw_dia, h = base_depth, center = true);
 
-// Tendon anchor point (attaches servo horn to tendon)
-module tendon_anchor() {
-    difference() {
-        union() {
-            cylinder(d = servo_horn_dia + 4, h = 3);
-            translate([0, 0, 3])
-                cylinder(d = 4, h = 5);
-        }
-        // Servo horn center hole
-        translate([0, 0, -1])
-            cylinder(d = servo_horn_dia, h = 5);
-        // Tendon tie-off hole
-        translate([0, 0, 5])
+        // Wire pass-through
+        translate([0, 0, base_height/2])
             rotate([90, 0, 0])
-                cylinder(d = tendon_channel_dia, h = servo_horn_dia + 6, center = true);
-    }
-}
+                cylinder(d = 5, h = base_depth + 2, center = true);
 
-// Joint pin (printable)
-module joint_pin() {
-    difference() {
-        union() {
-            cylinder(d = pin_diameter - 0.2, h = finger_width + 2);
-            // Head
-            cylinder(d = pin_diameter + 2, h = 1);
+        // Pneumatic air inlet (if enabled)
+        if (use_pneumatic) {
+            translate([-base_width/2 + 5, 0, base_height/2])
+                rotate([0, 90, 0])
+                    cylinder(d = air_channel_dia, h = 15, center = true);
         }
     }
 }
 
-// Return spring channel guide
-module spring_guide() {
-    difference() {
-        cube([8, 4, finger_thickness]);
-        translate([1, 1, 1])
-            cube([6, 2, finger_thickness - 1]);
-    }
+
+/* ===== FULL SOFT FINGER - MONOLITHIC PRINT-IN-PLACE ===== */
+// Single piece - no assembly needed!
+
+module soft_finger() {
+    x = 0;
+
+    // 1. Base mounting segment
+    color("SteelBlue", 0.9)
+    translate([x, 0, 0])
+        soft_segment(base_len, W, H);
+
+    // Tendon entry guide
+    color("Silver")
+    translate([1, 0, tendon_z])
+        rotate([0, 90, 0])
+            tendon_guide(3);
+
+    // 2. MCP Joint (base knuckle - most flex)
+    color("CornflowerBlue", 0.85)
+    translate([base_len, 0, 0])
+        bellows_joint(mcp_len, W, H, bellows_count_mcp);
+
+    // 3. Middle rigid segment
+    color("SteelBlue", 0.9)
+    translate([base_len + mcp_len, 0, 0])
+        soft_segment(mid_len, W, H);
+
+    // 4. PIP Joint (middle knuckle)
+    color("CornflowerBlue", 0.85)
+    translate([base_len + mcp_len + mid_len, 0, 0])
+        bellows_joint(pip_len, W, H, bellows_count_pip);
+
+    // 5. Tip segment
+    color("SteelBlue", 0.9)
+    translate([base_len + mcp_len + mid_len + pip_len, 0, 0])
+        soft_segment(tip_len, W, H);
+
+    // 6. DIP Joint (tip knuckle - least flex)
+    color("CornflowerBlue", 0.85)
+    translate([base_len + mcp_len + mid_len + pip_len + tip_len, 0, 0])
+        bellows_joint(dip_len, W, H, bellows_count_dip);
+
+    // 7. Fingertip with thread keeper
+    color("LightSkyBlue", 0.9)
+    translate([base_len + mcp_len + mid_len + pip_len + tip_len + dip_len, 0, 0])
+        thread_keeper_tip(ftip_len, W, H);
+
+    // Strain limit channel along entire dorsal surface
+    color("DarkSlateGray", 0.5)
+    translate([0, 0, 0])
+        strain_limit_channel(L * 0.85, W);
 }
 
 
-/* ---- Assembly ---- */
+/* ===== FULL ASSEMBLY WITH SERVO ===== */
 
-module finger_assembly() {
-    // Proximal phalanx (connects to servo)
-    color("SteelBlue")
-        phalanx(proximal_len, finger_width, finger_thickness,
-                has_proximal_joint = false, has_distal_joint = true);
+module full_soft_assembly() {
+    // Servo mount
+    color("DimGray", 0.8)
+    translate([-base_width/2, 0, -base_height - servo_body_h - 2])
+        soft_servo_mount();
 
-    // Middle phalanx
-    color("CornflowerBlue")
-        translate([proximal_len + joint_gap*2, 0, 0])
-            phalanx(middle_len, finger_width, finger_thickness,
-                    has_proximal_joint = true, has_distal_joint = true);
-
-    // Distal phalanx with thread keeper
-    color("LightSkyBlue")
-        translate([proximal_len + middle_len + joint_gap*4, 0, 0])
-            distal_phalanx();
-}
-
-module full_assembly() {
-    // Servo mount base
-    color("DimGray")
-        translate([-base_width/2 + finger_width/2, -base_depth + finger_width, -base_height - 5])
-            servo_mount();
-
-    // Finger
-    finger_assembly();
-
-    // Joint pins (shown in place)
-    color("Silver") {
-        translate([proximal_len + joint_gap, 0, finger_thickness/2])
-            rotate([-90, 0, 0])
-                translate([0, 0, -1])
-                    joint_pin();
-
-        translate([proximal_len + middle_len + joint_gap*3, 0, finger_thickness/2])
-            rotate([-90, 0, 0])
-                translate([0, 0, -1])
-                    joint_pin();
-    }
-
-    // Tendon anchor (on servo horn)
-    color("Orange")
-        translate([finger_width/2, finger_width/2, -10])
-            tendon_anchor();
+    // Soft finger
+    soft_finger();
 }
 
 
-/* ---- Render Selection ---- */
+/* ===== RENDER SELECTION ===== */
+// Uncomment desired output:
 
-// Uncomment the desired output:
+// Full assembly (visualization)
+full_soft_assembly();
 
-// Full assembled view (for visualization)
-full_assembly();
+// Just the finger (for printing)
+// soft_finger();
 
-// Individual parts for printing (uncomment one at a time):
-// translate([0, 30, 0]) phalanx(proximal_len, finger_width, finger_thickness, false, true);
-// translate([0, 60, 0]) phalanx(middle_len, finger_width, finger_thickness, true, true);
-// translate([0, 90, 0]) distal_phalanx();
-// translate([0, 130, 0]) servo_mount();
-// translate([0, 180, 0]) tendon_anchor();
-// translate([0, 200, 0]) joint_pin();
+// Just the servo mount (for printing)
+// soft_servo_mount();
 
-// Print plate (all parts laid flat):
-// module print_plate() {
-//     phalanx(proximal_len, finger_width, finger_thickness, false, true);
-//     translate([0, 25, 0]) phalanx(middle_len, finger_width, finger_thickness, true, true);
-//     translate([0, 50, 0]) distal_phalanx();
-//     translate([0, 80, 0]) servo_mount();
-//     translate([60, 0, 0]) tendon_anchor();
-//     translate([60, 20, 0]) joint_pin();
-//     translate([60, 30, 0]) joint_pin();
-// }
-// print_plate();
+// Individual bellows joint test piece (print this first to test TPU settings!)
+// bellows_joint(15, W, H, 4);
+
+// Thread keeper test
+// thread_keeper_tip(ftip_len, W, H);
