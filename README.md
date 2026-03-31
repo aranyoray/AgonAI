@@ -46,10 +46,9 @@ python3 main.py --agents hitler gandhi jinnah --topic territorial_disputes --rou
 
 ## Chat API (Serverless)
 - Vercel route: `POST /api/chat`
-- Recommended env (Gemini): `GOOGLE_CLOUD_API_KEY`
-- Legacy env (xAI/Grok, no longer default): `XAI_API_KEY` or `GROK_API_KEY`
+- Required env: `GEMINI_API_KEY`
+- Optional env: `GEMINI_MODEL` (default `gemini-2.0-flash`), `GEMINI_BASE_URL`
 - Optional tuning:
-  - `XAI_BASE_URL` (default `https://api.x.ai/v1`)
   - `CHAT_CACHE_TTL_S` (default 120 seconds)
   - `CHAT_CACHE_MAX_ITEMS` (default 256)
 
