@@ -50,7 +50,7 @@ function renderChatMessages(container, messages) {
     if (!speakerOrder.includes(msg.speaker)) speakerOrder.push(msg.speaker);
   });
 
-  messages.forEach((msg) => {
+  messages.forEach((msg, i) => {
     const color = getAgentColor(msg.speaker);
     const style = agentBubbleStyle(color);
     const idx = speakerOrder.indexOf(msg.speaker);
@@ -60,6 +60,7 @@ function renderChatMessages(container, messages) {
     bubble.className = 'chat-bubble';
     bubble.style.background = style.bg;
     bubble.style.border = `1px solid ${style.border}`;
+    bubble.style.animationDelay = `${i * 0.06}s`;
     if (alignRight) bubble.style.alignSelf = 'flex-end';
 
     const avatar = document.createElement('div');
@@ -169,17 +170,24 @@ async function runSimulation() {
   const chatStats = document.getElementById('chatStats');
   const scoresPanel = document.getElementById('scoresPanel');
   const scoresGrid = document.getElementById('scoresGrid');
+  const runBtn = document.getElementById('runBtn');
 
-  resultsEl.textContent = 'Running simulation\u2026';
+  runBtn.classList.add('loading');
+  runBtn.innerHTML = '<span class="spinner"></span>Running\u2026';
+  resultsEl.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running simulation\u2026</div>';
   chatPanel.style.display = 'none';
   scoresPanel.style.display = 'none';
 
   if (agents.length < 2) {
     resultsEl.textContent = 'Please select at least 2 agents to start a debate.';
+    runBtn.classList.remove('loading');
+    runBtn.textContent = 'Run Debate';
     return;
   }
   if (!topic) {
     resultsEl.textContent = 'Please enter or select a debate topic.';
+    runBtn.classList.remove('loading');
+    runBtn.textContent = 'Run Debate';
     return;
   }
 
@@ -216,6 +224,9 @@ async function runSimulation() {
     resultsEl.textContent = JSON.stringify(data, null, 2);
   } catch (err) {
     resultsEl.textContent = String(err);
+  } finally {
+    runBtn.classList.remove('loading');
+    runBtn.textContent = 'Run Debate';
   }
 }
 
@@ -230,9 +241,12 @@ async function runExperiment() {
   const expStats = document.getElementById('expStats');
   const expChat = document.getElementById('expChat');
   const expJson = document.getElementById('expJson');
+  const runExpBtn = document.getElementById('runExpBtn');
 
+  runExpBtn.classList.add('loading');
+  runExpBtn.innerHTML = '<span class="spinner"></span>Running\u2026';
   expResults.style.display = 'none';
-  expJson.textContent = 'Running experiment...';
+  expJson.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running experiment\u2026</div>';
   expResults.style.display = '';
 
   try {
@@ -281,6 +295,9 @@ async function runExperiment() {
     expJson.textContent = JSON.stringify(data, null, 2);
   } catch (err) {
     expJson.textContent = String(err);
+  } finally {
+    runExpBtn.classList.remove('loading');
+    runExpBtn.textContent = 'Run Experiment';
   }
 }
 
