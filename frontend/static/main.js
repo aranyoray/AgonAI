@@ -20,7 +20,6 @@ function getAgentColor(name) {
   return AGENT_COLORS[name] || '#6366f1';
 }
 
-// Convert hex color to a light tinted background (like iMessage bubbles)
 function agentBubbleStyle(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -42,9 +41,81 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+/* Typewriter effect: reveals words one by one */
+function typewriterEffect(element, text, wordsPerTick = 3, intervalMs = 40) {
+  return new Promise((resolve) => {
+    const words = text.split(/(\s+)/); // preserve whitespace
+    let index = 0;
+    element.innerHTML = '';
+    const timer = setInterval(() => {
+      if (index >= words.length) {
+        clearInterval(timer);
+        resolve();
+        return;
+      }
+      const chunk = words.slice(index, index + wordsPerTick).join('');
+      element.innerHTML += escapeHtml(chunk).replace(/\n/g, '<br>');
+      index += wordsPerTick;
+      // Keep scrolling the container
+      const container = element.closest('.chat-container');
+      if (container) container.scrollTop = container.scrollHeight;
+    }, intervalMs);
+  });
+}
+
+/* Render chat messages one by one with typewriter effect */
+async function renderChatMessagesAnimated(container, messages) {
+  container.innerHTML = '';
+  const speakerOrder = [];
+  messages.forEach((msg) => {
+    if (!speakerOrder.includes(msg.speaker)) speakerOrder.push(msg.speaker);
+  });
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    const color = getAgentColor(msg.speaker);
+    const style = agentBubbleStyle(color);
+    const idx = speakerOrder.indexOf(msg.speaker);
+    const alignRight = idx % 2 === 1;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble';
+    bubble.style.background = style.bg;
+    bubble.style.border = `1px solid ${style.border}`;
+    if (alignRight) bubble.style.alignSelf = 'flex-end';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.style.background = color;
+    avatar.textContent = getInitials(msg.speaker);
+
+    const body = document.createElement('div');
+    body.className = 'chat-body';
+
+    const speaker = document.createElement('div');
+    speaker.className = 'chat-speaker';
+    speaker.style.color = color;
+    speaker.innerHTML = `${escapeHtml(msg.speaker)} <span class="chat-round">Round ${msg.round}</span>`;
+
+    const text = document.createElement('div');
+    text.className = 'chat-text';
+    text.style.color = style.text;
+
+    body.appendChild(speaker);
+    body.appendChild(text);
+    bubble.appendChild(avatar);
+    bubble.appendChild(body);
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+
+    // Typewriter effect for each message
+    await typewriterEffect(text, msg.content);
+  }
+}
+
+/* Instant render (for experiment results where streaming isn't needed) */
 function renderChatMessages(container, messages) {
   container.innerHTML = '';
-  // Build a list of unique speakers in order of appearance for alternating alignment
   const speakerOrder = [];
   messages.forEach((msg) => {
     if (!speakerOrder.includes(msg.speaker)) speakerOrder.push(msg.speaker);
@@ -107,6 +178,11 @@ function renderStats(container, data) {
   `;
 }
 
+function roundTwo(val) {
+  if (val == null) return '—';
+  return Number(val).toFixed(2);
+}
+
 function renderPolicyScores(container, scores) {
   if (!scores) { container.style.display = 'none'; return; }
   container.style.display = '';
@@ -123,10 +199,10 @@ function renderPolicyScores(container, scores) {
           ${renderDim('Social', cs.social)}
         </div>
         <div class="score-meta">
-          <span>Objective: <b>${card.final_objective}</b></span>
-          <span>Fatigue: ${card.fatigue}</span>
-          <span>Empathy bonus: ${card.empathy_bonus}</span>
-          <span>Penalties: ${card.penalties}</span>
+          <span>Objective: <b>${roundTwo(card.final_objective)}</b></span>
+          <span>Fatigue: ${roundTwo(card.fatigue)}</span>
+          <span>Empathy bonus: ${roundTwo(card.empathy_bonus)}</span>
+          <span>Penalties: ${roundTwo(card.penalties)}</span>
         </div>
       </div>
     `;
@@ -144,7 +220,7 @@ function renderDim(label, dim) {
         <span class="bar-benefit" style="width:${Math.min(dim.benefit, 100)}%"></span>
         <span class="bar-cost" style="width:${Math.min(dim.cost, 100)}%"></span>
       </span>
-      <span class="dim-net ${netClass}">${dim.net > 0 ? '+' : ''}${dim.net}</span>
+      <span class="dim-net ${netClass}">${dim.net > 0 ? '+' : ''}${roundTwo(dim.net)}</span>
     </div>
   `;
 }
@@ -157,11 +233,6 @@ async function runSimulation() {
   const topic = topicSelect === 'custom' ? topicInput : topicSelect;
   const rounds = parseInt(document.getElementById('rounds').value, 10) || 12;
   const summaryOnly = document.getElementById('summaryOnly').checked;
-  const llmBackend = document.getElementById('llmBackend').value;
-  const useGemini = llmBackend === 'gemini';
-  const useOllama = llmBackend === 'ollama';
-  const baseUrl = document.getElementById('baseUrl').value.trim() || undefined;
-  const model = document.getElementById('model').value.trim() || undefined;
   const sessionId = window.localStorage.getItem('sessionId') || undefined;
 
   const resultsEl = document.getElementById('results');
@@ -195,7 +266,7 @@ async function runSimulation() {
     const resp = await fetch('/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agents, topic, rounds, summaryOnly, useGemini, useOllama, baseUrl, model, sessionId })
+      body: JSON.stringify({ agents, topic, rounds, summaryOnly, sessionId })
     });
 
     const data = await resp.json();
@@ -208,11 +279,12 @@ async function runSimulation() {
       window.localStorage.setItem('sessionId', data.sessionId);
     }
 
-    // Show chat interface
+    // Show chat interface with typewriter effect
     if (data.chatMessages && data.chatMessages.length > 0) {
       chatPanel.style.display = '';
-      renderChatMessages(chatContainer, data.chatMessages);
       renderStats(chatStats, data);
+      resultsEl.innerHTML = '';
+      await renderChatMessagesAnimated(chatContainer, data.chatMessages);
     }
 
     // Show policy scores
@@ -230,6 +302,94 @@ async function runSimulation() {
   }
 }
 
+/* Render experiment results in a user-friendly format */
+function renderExperimentDetails(container, data) {
+  let html = '';
+
+  // Summary card
+  html += `<div class="exp-summary-card">`;
+  html += `<h4>${escapeHtml(data.experiment || 'Experiment')}</h4>`;
+  html += `<div class="exp-summary-grid">`;
+  html += `<div class="exp-metric"><span class="exp-metric-label">Status</span><span class="exp-metric-value status-${data.status}">${data.status}</span></div>`;
+  html += `<div class="exp-metric"><span class="exp-metric-label">Consensus</span><span class="exp-metric-value">${roundTwo(data.consensus_score)}</span></div>`;
+  html += `<div class="exp-metric"><span class="exp-metric-label">Rounds</span><span class="exp-metric-value">${data.rounds_played}</span></div>`;
+  if (data.convergence_round) {
+    html += `<div class="exp-metric"><span class="exp-metric-label">Converged at</span><span class="exp-metric-value">Round ${data.convergence_round}</span></div>`;
+  }
+  html += `</div>`;
+  html += `</div>`;
+
+  // Empathy ratios
+  if (data.empathy_ratios && Object.keys(data.empathy_ratios).length > 0) {
+    html += `<div class="exp-section"><h4>Empathy Ratios</h4><div class="exp-empathy-bars">`;
+    for (const [name, val] of Object.entries(data.empathy_ratios)) {
+      const pct = Math.round(val * 100);
+      const color = getAgentColor(name);
+      html += `
+        <div class="exp-empathy-row">
+          <span class="exp-empathy-name" style="color:${color}">${escapeHtml(name)}</span>
+          <div class="exp-empathy-track">
+            <div class="exp-empathy-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+          <span class="exp-empathy-val">${roundTwo(val)}</span>
+        </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Agreements & Disagreements
+  if (data.key_agreements && data.key_agreements.length > 0) {
+    html += `<div class="exp-section"><h4>Key Agreements</h4><ul class="exp-list exp-list-agree">`;
+    data.key_agreements.forEach(a => { html += `<li>${escapeHtml(a)}</li>`; });
+    html += `</ul></div>`;
+  }
+  if (data.key_disagreements && data.key_disagreements.length > 0) {
+    html += `<div class="exp-section"><h4>Key Disagreements</h4><ul class="exp-list exp-list-disagree">`;
+    data.key_disagreements.forEach(d => { html += `<li>${escapeHtml(d)}</li>`; });
+    html += `</ul></div>`;
+  }
+
+  // Policy scores
+  if (data.policy_scores && Object.keys(data.policy_scores).length > 0) {
+    html += `<div class="exp-section"><h4>Policy Scores</h4><div class="scores-grid">`;
+    for (const [name, card] of Object.entries(data.policy_scores)) {
+      const color = getAgentColor(name);
+      const cs = card.cumulative_scores || {};
+      html += `
+        <div class="score-card">
+          <h3 style="color:${color}">${escapeHtml(name)}</h3>
+          <div class="score-dims">
+            ${renderDim('Political', cs.political)}
+            ${renderDim('Economic', cs.economic)}
+            ${renderDim('Social', cs.social)}
+          </div>
+          <div class="score-meta">
+            <span>Objective: <b>${roundTwo(card.final_objective)}</b></span>
+            <span>Fatigue: ${roundTwo(card.fatigue)}</span>
+            <span>Empathy bonus: ${roundTwo(card.empathy_bonus)}</span>
+            <span>Penalties: ${roundTwo(card.penalties)}</span>
+          </div>
+        </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Judge verdict
+  if (data.judge_verdict) {
+    const jv = data.judge_verdict;
+    html += `<div class="judge-verdict">`;
+    html += `<h4>Judge Verdict</h4>`;
+    html += `<p><b>Winner:</b> ${escapeHtml(jv.winner || 'No clear winner')} (margin: ${roundTwo(jv.margin)})</p>`;
+    html += `<p><b>Convergence:</b> ${jv.convergence_round ? 'Round ' + jv.convergence_round : 'None'} (metric: ${roundTwo(jv.convergence_metric)})</p>`;
+    if (jv.recommendations && jv.recommendations.length > 0) {
+      html += '<ul>' + jv.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('') + '</ul>';
+    }
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
 async function runExperiment() {
   const expId = parseInt(document.getElementById('expSelect').value, 10);
   const topic = document.getElementById('expTopic').value;
@@ -240,13 +400,14 @@ async function runExperiment() {
   const expResults = document.getElementById('expResults');
   const expStats = document.getElementById('expStats');
   const expChat = document.getElementById('expChat');
-  const expJson = document.getElementById('expJson');
+  const expDetails = document.getElementById('expDetails');
   const runExpBtn = document.getElementById('runExpBtn');
 
   runExpBtn.classList.add('loading');
   runExpBtn.innerHTML = '<span class="spinner"></span>Running\u2026';
   expResults.style.display = 'none';
-  expJson.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running experiment\u2026</div>';
+  expChat.innerHTML = '';
+  expDetails.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running experiment\u2026</div>';
   expResults.style.display = '';
 
   try {
@@ -262,39 +423,31 @@ async function runExperiment() {
     });
     const data = await resp.json();
 
-    // Stats
+    // Stats chips
     expStats.innerHTML = `
       <div class="stats-row">
-        <span class="stat-chip">${data.experiment}</span>
+        <span class="stat-chip">${escapeHtml(data.experiment || '')}</span>
         <span class="stat-chip status-${data.status}">${data.status}</span>
-        <span class="stat-chip">Consensus: ${data.consensus_score}</span>
+        <span class="stat-chip">Consensus: ${roundTwo(data.consensus_score)}</span>
         <span class="stat-chip">Rounds: ${data.rounds_played}</span>
         ${data.convergence_round ? `<span class="stat-chip">Converged: Round ${data.convergence_round}</span>` : ''}
-        ${Object.entries(data.empathy_ratios || {}).map(([n, v]) =>
-          `<span class="stat-chip"><b>${n}</b> empathy: ${v}</span>`
-        ).join('')}
       </div>
     `;
 
-    // Judge verdict
-    if (data.judge_verdict) {
-      const jv = data.judge_verdict;
-      let judgeHtml = '<div class="judge-verdict">';
-      judgeHtml += '<h4>Judge Verdict</h4>';
-      judgeHtml += `<p><b>Winner:</b> ${jv.winner || 'No clear winner'} (margin: ${jv.margin})</p>`;
-      judgeHtml += `<p><b>Convergence:</b> ${jv.convergence_round ? 'Round ' + jv.convergence_round : 'None'} (metric: ${jv.convergence_metric})</p>`;
-      if (jv.recommendations) {
-        judgeHtml += '<ul>' + jv.recommendations.map(r => `<li>${r}</li>`).join('') + '</ul>';
-      }
-      judgeHtml += '</div>';
-      expChat.innerHTML = judgeHtml;
-    } else {
-      expChat.innerHTML = '';
+    // Chat transcript if available
+    if (data.transcript && data.transcript.length > 0) {
+      const chatMsgs = data.transcript.map(t => ({
+        round: t.round_number || t.round || 0,
+        speaker: t.speaker || 'Unknown',
+        content: t.response || t.content || '',
+      }));
+      renderChatMessages(expChat, chatMsgs);
     }
 
-    expJson.textContent = JSON.stringify(data, null, 2);
+    // Rich details
+    renderExperimentDetails(expDetails, data);
   } catch (err) {
-    expJson.textContent = String(err);
+    expDetails.innerHTML = `<div class="exp-error">${escapeHtml(String(err))}</div>`;
   } finally {
     runExpBtn.classList.remove('loading');
     runExpBtn.textContent = 'Run Experiment';
@@ -311,18 +464,6 @@ window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('topic').value = e.target.value;
     }
   });
-
-  // LLM backend toggle - show/hide Ollama fields
-  const llmSelect = document.getElementById('llmBackend');
-  const ollamaFields = document.getElementById('ollamaFields');
-  const geminiModelHint = document.getElementById('geminiModelHint');
-  function updateLLMFields() {
-    const val = llmSelect.value;
-    if (ollamaFields) ollamaFields.style.display = val === 'ollama' ? '' : 'none';
-    if (geminiModelHint) geminiModelHint.style.display = val === 'gemini' ? '' : 'none';
-  }
-  llmSelect.addEventListener('change', updateLLMFields);
-  updateLLMFields();
 
   // Jump buttons
   document.getElementById('jumpToConfig').addEventListener('click', () => {

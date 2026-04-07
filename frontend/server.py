@@ -73,10 +73,6 @@ async def simulate(request: Request) -> JSONResponse:
     except (TypeError, ValueError):
         rounds = 12
     summary_only: bool = bool(body.get("summaryOnly", True))
-    use_ollama: bool = bool(body.get("useOllama", False))
-    use_gemini: bool = bool(body.get("useGemini", False))
-    model: Optional[str] = body.get("model")
-    base_url: Optional[str] = body.get("baseUrl")
     session_id: Optional[str] = body.get("sessionId")
 
     if len(agent_names) < 2:
@@ -84,13 +80,9 @@ async def simulate(request: Request) -> JSONResponse:
     if not topic:
         return JSONResponse({"error": "Topic is required"}, status_code=400)
 
-    llm_client = None
     memory_client = SuperMemoryClient()
     exa_client = ExaContextClient()
-    if use_gemini:
-        llm_client = GeminiClient(model=model)
-    elif use_ollama:
-        llm_client = OllamaClient(base_url=base_url, model=model)
+    llm_client = GeminiClient()
 
     # Build agents
     conversation_state = load_state(session_id=session_id, store=conversation_store)
@@ -149,9 +141,9 @@ async def simulate(request: Request) -> JSONResponse:
         "durationMinutes": round(result.duration_minutes, 2),
         "agreements": result.key_agreements,
         "disagreements": result.key_disagreements,
-        "usedLLM": llm_client is not None,
-        "llmBackend": "gemini" if use_gemini else ("ollama" if use_ollama else None),
-        "model": model or (os.environ.get("GEMINI_MODEL") if use_gemini else os.environ.get("OLLAMA_MODEL")),
+        "usedLLM": True,
+        "llmBackend": "gemini",
+        "model": os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"),
         "sessionId": conversation_state.session_id,
         "chatMessages": chat_messages,
         "policyScores": {a.name: a.scorecard.as_dict() for a in agents},
