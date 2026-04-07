@@ -1,7 +1,11 @@
 {
   "framework": null,
   "rewrites": [
+    { "source": "/simulate", "destination": "/api/simulate" },
+    { "source": "/experiment", "destination": "/api/experiment" },
+    { "source": "/experiments/list", "destination": "/api/experiment" },
     { "source": "/api/chat", "destination": "/api/chat" },
-    { "source": "/api/simulate", "destination": "/api/simulate" }
+    { "source": "/api/simulate", "destination": "/api/simulate" },
+    { "source": "/api/experiment", "destination": "/api/experiment" }
   ]
 }

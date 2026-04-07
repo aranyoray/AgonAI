@@ -247,7 +247,9 @@ async function runSimulation() {
   runBtn.innerHTML = '<span class="spinner"></span>Running\u2026';
   resultsEl.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running simulation\u2026</div>';
   chatPanel.style.display = 'none';
+  chatPanel.classList.remove('panel-reveal');
   scoresPanel.style.display = 'none';
+  scoresPanel.classList.remove('panel-reveal');
 
   if (agents.length < 2) {
     resultsEl.textContent = 'Please select at least 2 agents to start a debate.';
@@ -282,6 +284,7 @@ async function runSimulation() {
     // Show chat interface with typewriter effect
     if (data.chatMessages && data.chatMessages.length > 0) {
       chatPanel.style.display = '';
+      chatPanel.classList.add('panel-reveal');
       renderStats(chatStats, data);
       resultsEl.innerHTML = '';
       await renderChatMessagesAnimated(chatContainer, data.chatMessages);
@@ -290,6 +293,7 @@ async function runSimulation() {
     // Show policy scores
     if (data.policyScores) {
       scoresPanel.style.display = '';
+      scoresPanel.classList.add('panel-reveal');
       renderPolicyScores(scoresGrid, data.policyScores);
     }
 
@@ -406,9 +410,11 @@ async function runExperiment() {
   runExpBtn.classList.add('loading');
   runExpBtn.innerHTML = '<span class="spinner"></span>Running\u2026';
   expResults.style.display = 'none';
+  expResults.classList.remove('panel-reveal');
   expChat.innerHTML = '';
   expDetails.innerHTML = '<div class="loading-text"><span class="spinner"></span>Running experiment\u2026</div>';
   expResults.style.display = '';
+  expResults.classList.add('panel-reveal');
 
   try {
     const resp = await fetch('/experiment', {

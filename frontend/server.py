@@ -184,7 +184,22 @@ async def run_experiment_endpoint(request: Request) -> JSONResponse:
         return JSONResponse({"error": f"Experiment {experiment_id} not available"}, status_code=400)
 
     result = run_experiment(configs[idx])
-    return JSONResponse(result.as_dict())
+    raw_dict = result.as_dict()
+
+    # Map keys to match frontend expectations
+    raw_dict["key_agreements"] = raw_dict.pop("agreements", [])
+    raw_dict["key_disagreements"] = raw_dict.pop("disagreements", [])
+    raw_dict["policy_scores"] = raw_dict.pop("scorecards", {})
+    raw_dict["transcript"] = [
+        {
+            "round_number": rd.round_number,
+            "speaker": rd.speaker,
+            "response": rd.response,
+        }
+        for rd in result.debate_result.rounds
+    ]
+
+    return JSONResponse(raw_dict)
 
 
 @app.get("/experiments/list")
