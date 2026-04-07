@@ -57,6 +57,8 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(body)
 
@@ -89,8 +91,11 @@ class handler(BaseHTTPRequestHandler):
             self._send(500, {"error": "Boot failed", "detail": _boot_error})
             return
 
-        length = int(self.headers.get("Content-Length", "0"))
-        raw = self.rfile.read(length)
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        raw = self.rfile.read(length) if length > 0 else b"{}"
         try:
             body = json.loads(raw or "{}")
         except json.JSONDecodeError:
@@ -99,7 +104,10 @@ class handler(BaseHTTPRequestHandler):
 
         agent_names: List[str] = body.get("agents", [])
         topic: str = body.get("topic", "")
-        rounds: int = int(body.get("rounds", 12))
+        try:
+            rounds: int = int(body.get("rounds", 12))
+        except (TypeError, ValueError):
+            rounds = 12
         use_gemini: bool = bool(body.get("useGemini", False))
         model: Optional[str] = body.get("model")
         session_id: Optional[str] = body.get("sessionId")

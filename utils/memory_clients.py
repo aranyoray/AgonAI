@@ -30,10 +30,7 @@ class SuperMemoryClient:
         base_url: Optional[str] = None,
         timeout_s: float = 3.0,
     ) -> None:
-        self.api_key = api_key or os.getenv(
-            "SUPERMEMORY_API_KEY",
-            "sm_ytv7FS5jkifRGCuZvBWyhz_GAptVZLTQweosUiPuogXSGmwLucudgCWilbxXszxqepfvbDMGwtPioWYOXcZkCuF",
-        )
+        self.api_key = api_key or os.getenv("SUPERMEMORY_API_KEY", "")
         self.base_url = base_url or os.getenv("SUPERMEMORY_BASE_URL")
         self.timeout_s = timeout_s
         self._events: Dict[str, List[MemoryEvent]] = {}
@@ -83,7 +80,7 @@ class ExaContextClient:
         base_url: Optional[str] = None,
         timeout_s: float = 3.0,
     ) -> None:
-        self.api_key = api_key or os.getenv("EXA_API_KEY", "7557a88a-52af-4489-8e5b-7c3a9e9b77a4")
+        self.api_key = api_key or os.getenv("EXA_API_KEY", "")
         self.base_url = base_url or os.getenv("EXA_BASE_URL")
         self.timeout_s = timeout_s
 

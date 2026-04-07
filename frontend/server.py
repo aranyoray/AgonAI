@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any, Optional
 import os
 import json
@@ -20,6 +21,12 @@ from utils.conversation_state import InMemoryConversationStore, load_state
 from utils.memory_clients import SuperMemoryClient, ExaContextClient
 
 app = FastAPI(title="AI Political Agents Frontend")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 conversation_store = InMemoryConversationStore()
 
 # Serve static files
@@ -61,7 +68,10 @@ async def simulate(request: Request) -> JSONResponse:
     body = await request.json()
     agent_names: List[str] = body.get("agents", [])
     topic: str = body.get("topic", "")
-    rounds: int = int(body.get("rounds", 12))
+    try:
+        rounds: int = int(body.get("rounds", 12))
+    except (TypeError, ValueError):
+        rounds = 12
     summary_only: bool = bool(body.get("summaryOnly", True))
     use_ollama: bool = bool(body.get("useOllama", False))
     use_gemini: bool = bool(body.get("useGemini", False))
@@ -177,8 +187,8 @@ async def run_experiment_endpoint(request: Request) -> JSONResponse:
     )
 
     # Select the requested experiment (1-indexed)
-    idx = max(0, min(experiment_id - 1, len(configs) - 1))
-    if idx >= len(configs):
+    idx = experiment_id - 1
+    if idx < 0 or idx >= len(configs):
         return JSONResponse({"error": f"Experiment {experiment_id} not available"}, status_code=400)
 
     result = run_experiment(configs[idx])
