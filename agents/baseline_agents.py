@@ -77,20 +77,10 @@ class RationalAgent(HistoricalAgent):
         other_agents: List[HistoricalAgent],
         debate_context: Dict[str, Any],
     ) -> str:
-        llm = self.generate_llm_response(topic, debate_context)
+        llm = self.generate_llm_response(topic, other_agents, debate_context)
         if llm:
             return llm
-
-        opponents = ", ".join(a.name for a in other_agents)
-        return (
-            f"From a rational standpoint, {opponents}, on the topic of {topic}: "
-            f"I propose we evaluate the costs and benefits objectively. "
-            f"My analysis indicates we should maximize net benefit across political, "
-            f"economic, and social dimensions. I am willing to concede points where "
-            f"the marginal cost exceeds the marginal benefit, but I will hold firm "
-            f"on positions where my net gain is positive."
-            + self.compromise_note()
-        )
+        return "Let's evaluate costs and benefits objectively and find the option with the highest net gain."
 
     def evaluate_proposal(
         self, proposal: str, proposer: HistoricalAgent
@@ -146,21 +136,10 @@ class EmpatheticAgent(HistoricalAgent):
         other_agents: List[HistoricalAgent],
         debate_context: Dict[str, Any],
     ) -> str:
-        llm = self.generate_llm_response(topic, debate_context)
+        llm = self.generate_llm_response(topic, other_agents, debate_context)
         if llm:
             return llm
-
-        opponents = ", ".join(a.name for a in other_agents)
-        return (
-            f"I hear your concerns, {opponents}. On {topic}, "
-            f"I believe we can find a solution that works for all of us. "
-            f"I am genuinely interested in understanding your priorities — "
-            f"what matters most to you politically, economically, and socially? "
-            f"I am willing to make significant concessions if it means we both "
-            f"come away better off. Let me propose a framework where we each "
-            f"share our top three needs and work from there."
-            + self.compromise_note()
-        )
+        return "I want to understand your priorities — what matters most to you? I'm willing to make real concessions."
 
     def evaluate_proposal(
         self, proposal: str, proposer: HistoricalAgent
