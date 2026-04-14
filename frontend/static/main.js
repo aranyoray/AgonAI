@@ -228,9 +228,7 @@ function renderDim(label, dim) {
 async function runSimulation() {
   const agentInputs = Array.from(document.querySelectorAll('.agent'));
   const agents = agentInputs.filter(a => a.checked).map(a => a.value);
-  const topicSelect = document.getElementById('topicSelect').value;
-  const topicInput = document.getElementById('topic').value.trim();
-  const topic = topicSelect === 'custom' ? topicInput : topicSelect;
+  const topic = document.getElementById('topic').value.trim();
   const rounds = parseInt(document.getElementById('rounds').value, 10) || 12;
   const summaryOnly = document.getElementById('summaryOnly').checked;
   const sessionId = window.localStorage.getItem('sessionId') || undefined;
@@ -464,13 +462,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('runBtn').addEventListener('click', runSimulation);
   document.getElementById('runExpBtn').addEventListener('click', runExperiment);
 
-  // Topic select sync
-  document.getElementById('topicSelect').addEventListener('change', (e) => {
-    if (e.target.value !== 'custom') {
-      document.getElementById('topic').value = e.target.value;
-    }
-  });
-
   // Jump buttons
   document.getElementById('jumpToConfig').addEventListener('click', () => {
     document.getElementById('configPanel').scrollIntoView({ behavior: 'smooth' });
@@ -559,7 +550,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const prompt = agentData[activeAgentKey]?.focusPrompt;
     if (prompt) {
       document.getElementById('topic').value = prompt;
-      document.getElementById('topicSelect').value = 'custom';
     }
     toggleAgent(activeAgentKey, true);
     document.getElementById('configPanel').scrollIntoView({ behavior: 'smooth' });
