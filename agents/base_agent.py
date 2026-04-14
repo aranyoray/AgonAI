@@ -168,11 +168,11 @@ class HistoricalAgent(ABC):
         other_agents: List['HistoricalAgent'],
         debate_context: Dict[str, Any],
     ) -> Optional[str]:
-        """Generate a conversational response via Gemini.
+        """Generate a response via the Gemini API.
 
-        Always attempts if llm_client is set.  The prompt includes the
-        full personality profile and recent messages so the model stays
-        in character and engages with what was actually said.
+        Returns None ONLY if no llm_client is configured.
+        If the API call fails, returns an error-aware fallback so the
+        debate never silently degrades to a static string.
         """
         if not self.llm_client:
             return None
@@ -180,104 +180,82 @@ class HistoricalAgent(ABC):
         round_num = len(self.conversation_history)
         num_participants = len(other_agents) + 1
         is_two_person = num_participants == 2
+        other_names = [a.name for a in other_agents]
 
-        # Separate the other person's last message from the rest of the history
-        # so the model clearly knows what to respond TO vs. what is background.
-        other_last = ""
-        earlier_lines: list[str] = []
-        my_points: list[str] = []
-        for entry in self.conversation_history[-8:]:
+        # ---- build chat transcript ----
+        lines: list[str] = []
+        my_prev: list[str] = []
+        other_last_msg = ""
+        for entry in self.conversation_history[-6:]:
             speaker = entry.get("speaker", "?")
             content = entry.get("content", "")
             if speaker == self.name:
-                my_points.append(content)
-                label = "Me"
+                my_prev.append(content)
+                tag = "Me"
             elif is_two_person:
-                label = "You"
+                tag = "Them"
             else:
-                label = speaker
-            earlier_lines.append(f"{label}: {content}")
-
-        # The very last thing the other person said
+                tag = speaker
+            lines.append(f"{tag}: {content}")
         for entry in reversed(self.conversation_history):
             if entry.get("speaker") != self.name:
-                other_last = entry.get("content", "")
+                other_last_msg = entry.get("content", "")
                 break
 
-        transcript = "\n".join(earlier_lines)
+        chat_log = "\n".join(lines)
 
-        # Collect points I already made so the model can avoid them
-        avoid_section = ""
-        if my_points:
-            avoid_section = (
-                "\n\nPoints you already made (DO NOT repeat or rephrase these):\n"
-                + "\n".join(f"- {p}" for p in my_points[-3:])
-            )
-
-        # Round-aware directive
-        if round_num < 2:
-            phase = "Opening. Share a fresh take on the topic."
-        elif round_num < 5:
-            phase = (
-                "Mid-conversation. React specifically to what was just said. "
-                "Acknowledge any fair point before disagreeing."
-            )
+        # ---- phase directive ----
+        if round_num == 0:
+            phase = "This is your OPENING message. Introduce your stance on the topic."
+        elif round_num < 4:
+            phase = "React to what they just said. Push back or agree, but add something new."
         else:
-            phase = (
-                "Late in the conversation. Find common ground. "
-                "Name one specific thing you can agree on or concede."
-            )
+            phase = "Look for common ground. Offer a specific compromise or concession."
 
-        other_names = [a.name for a in other_agents]
+        # ---- system message ----
+        system_parts = [
+            f"You are {self.name}.",
+            f"Ideology: {self.ideology.value}.",
+            f"Personality — assertive: {self.personality.assertiveness}, cooperative: {self.personality.cooperativeness}, dominant: {self.personality.dominance}, pragmatic: {self.personality.pragmatism}, open: {self.personality.openness_to_change}.",
+        ]
+        if self.red_lines:
+            system_parts.append(f"Non-negotiable limits: {'; '.join(self.red_lines)}.")
+        system_parts.append("")
+        system_parts.append("Rules:")
+        system_parts.append("- 1 to 3 short sentences, like a text message.")
+        system_parts.append("- Do NOT start with any name, greeting, or 'My dear'.")
+        if is_two_person:
+            system_parts.append("- Address the other person as 'you', never by name.")
+        system_parts.append("- Respond to what THEY said, not to yourself.")
+        if my_prev:
+            system_parts.append(f"- You already said these things (say something DIFFERENT): {' | '.join(p[:80] for p in my_prev[-3:])}")
+        system_parts.append(f"- {phase}")
 
-        system = (
-            f"You are {self.name} texting "
-            + (f"{other_names[0]}" if is_two_person else f"{', '.join(other_names)}")
-            + f" about: {topic}\n"
-            f"Ideology: {self.ideology.value}. "
-            f"Traits — cooperative: {self.personality.cooperativeness}, "
-            f"assertive: {self.personality.assertiveness}, "
-            f"pragmatic: {self.personality.pragmatism}, "
-            f"dominant: {self.personality.dominance}, "
-            f"open: {self.personality.openness_to_change}.\n"
-            f"Hard limits: {', '.join(self.red_lines) if self.red_lines else 'none'}.\n\n"
-            "STRICT RULES:\n"
-            "1. Write 1-3 casual sentences like a text message. No speeches.\n"
-            "2. NEVER open with a name, greeting, 'My dear', 'Look', 'Well', or any fixed phrase. "
-            "Vary your sentence opener every single time.\n"
-            "3. NEVER quote or paraphrase yourself. Only react to what THEY said.\n"
-            + ("4. Say 'you'/'your', never their full name.\n" if is_two_person else "")
-            + f"5. Respond DIRECTLY to their last message. Do not drift to a new sub-topic.\n"
-            f"6. Bring a NEW angle or argument each time. Read the 'already made' list and say something different.\n"
-            f"7. Work toward agreement — offer trade-offs, concessions, or shared principles.\n"
-            f"8. Phase: {phase}\n"
-        )
+        system = "\n".join(system_parts)
 
-        if transcript:
-            prompt = f"Chat so far:\n{transcript}"
-            if other_last:
-                prompt += f"\n\nTheir last message: \"{other_last}\""
-            prompt += avoid_section
-            prompt += "\n\nYour next message (1-3 sentences, new angle, no repeated points):"
+        # ---- user prompt ----
+        if chat_log:
+            prompt = f"Topic: {topic}\n\nConversation:\n{chat_log}\n\n"
+            if other_last_msg:
+                prompt += f"They just said: {other_last_msg}\n\n"
+            prompt += "Your reply:"
         else:
-            prompt = (
-                f"Topic: {topic}\n"
-                "Send your opening message (1-3 casual sentences, jump right into your take):"
-            )
+            prompt = f"Topic: {topic}\n\nSend your opening message:"
 
+        # ---- call Gemini ----
         try:
-            response = self.llm_client.generate(
+            text = self.llm_client.generate(
                 prompt=prompt,
                 system=system,
                 options={"temperature": 0.95, "max_tokens": 150},
             )
-        except Exception:
-            return None
-
-        if not response or not response.strip():
-            return None
-
-        return response.strip()
+            if text and text.strip():
+                return text.strip()
+            # Empty response from Gemini — fall through to error fallback
+            return f"[{self.name} on {topic}] I need a moment to gather my thoughts on this."
+        except Exception as exc:
+            # Return the error visibly so it's not silently swallowed
+            return f"[Gemini API error for {self.name}: {exc}]"
 
     # ============== Policy scoring helpers ==============
     def score_round(

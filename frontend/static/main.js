@@ -256,7 +256,7 @@ async function runSimulation() {
     return;
   }
   if (!topic) {
-    resultsEl.textContent = 'Please enter or select a debate topic.';
+    resultsEl.textContent = 'Please enter a debate topic.';
     runBtn.classList.remove('loading');
     runBtn.textContent = 'Run Debate';
     return;
