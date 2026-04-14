@@ -205,8 +205,8 @@ def score_proposal(
     for dim_name in ("political", "economic", "social"):
         b, c = base[dim_name]
         shift = ideology_shifts.get(dim_name, (0, 0))
-        benefit = b + shift[0] + personality_modifier * 20
-        cost = c + shift[1] - cooperation_level * 15
+        benefit = b + shift[0] + personality_modifier * 30
+        cost = c + shift[1] - cooperation_level * 25
         dims[dim_name] = PolicyDimension(benefit=benefit, cost=cost)
 
     return PolicyScores(
@@ -331,8 +331,17 @@ class OCEANTraits:
         return max(0.0, min(1.0, score))
 
     def personality_modifier(self) -> float:
-        """Map OCEAN to a -0.3..+0.3 modifier for scoring."""
-        return (self.agreeableness - 0.5) * 0.3 + (self.openness - 0.5) * 0.15
+        """Map OCEAN to a modifier for scoring.
+
+        Range is roughly -0.6..+0.6, large enough to create visible
+        differences between cooperative and adversarial personalities.
+        """
+        return (
+            (self.agreeableness - 0.5) * 0.6
+            + (self.openness - 0.5) * 0.3
+            + (self.conscientiousness - 0.5) * 0.15
+            - (self.neuroticism - 0.5) * 0.15
+        )
 
     def as_dict(self) -> Dict[str, float]:
         return {
@@ -354,16 +363,21 @@ def _clamp100(v: float) -> float:
 
 
 def _ideology_shifts(ideology: str) -> Dict[str, Tuple[float, float]]:
-    """Return (benefit_shift, cost_shift) per dimension for an ideology."""
+    """Return (benefit_shift, cost_shift) per dimension for an ideology.
+
+    Shifts are large enough to produce visibly distinct scores across agents
+    with different ideologies. Positive benefit shifts increase perceived
+    benefit; positive cost shifts increase perceived cost.
+    """
     shifts: Dict[str, Dict[str, Tuple[float, float]]] = {
-        "fascism": {"political": (15, -5), "economic": (5, 10), "social": (-20, 20)},
-        "nonviolence": {"political": (-5, -15), "economic": (0, -10), "social": (20, -20)},
-        "muslim_nationalism": {"political": (10, 5), "economic": (5, 0), "social": (5, 5)},
-        "communism": {"political": (5, 10), "economic": (10, 15), "social": (15, 5)},
-        "democracy": {"political": (10, -5), "economic": (5, 0), "social": (15, -10)},
-        "capitalism": {"political": (0, 5), "economic": (20, 10), "social": (-5, 10)},
-        "authoritarianism": {"political": (20, 0), "economic": (5, 10), "social": (-15, 15)},
-        "liberalism": {"political": (5, -5), "economic": (10, 5), "social": (15, -10)},
-        "conservatism": {"political": (10, 0), "economic": (10, 5), "social": (0, 5)},
+        "fascism":             {"political": (30, -15), "economic": (5, 20),  "social": (-35, 35)},
+        "nonviolence":         {"political": (-15, -30), "economic": (-5, -20), "social": (35, -35)},
+        "muslim_nationalism":  {"political": (20, 10),  "economic": (10, -5),  "social": (10, 15)},
+        "communism":           {"political": (10, 20),  "economic": (20, 25),  "social": (25, 5)},
+        "democracy":           {"political": (15, -15), "economic": (5, -5),   "social": (25, -20)},
+        "capitalism":          {"political": (-5, 10),  "economic": (35, 15),  "social": (-15, 20)},
+        "authoritarianism":    {"political": (35, -10), "economic": (5, 15),   "social": (-30, 30)},
+        "liberalism":          {"political": (10, -10), "economic": (15, 5),   "social": (25, -20)},
+        "conservatism":        {"political": (20, -5),  "economic": (15, 10),  "social": (-5, 10)},
     }
     return shifts.get(ideology.lower(), {"political": (0, 0), "economic": (0, 0), "social": (0, 0)})

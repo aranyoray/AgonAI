@@ -4,6 +4,7 @@ Muhammad Ali Jinnah AI Agent - Muslim nationalism ideology
 
 from typing import Dict, List, Any
 from .base_agent import HistoricalAgent, PersonalityTraits, HistoricalContext, Ideology
+from scoring.policy_scoring import REGION_WEIGHTS
 
 
 class JinnahAgent(HistoricalAgent):
@@ -47,6 +48,10 @@ class JinnahAgent(HistoricalAgent):
             memory_client=memory_client
         )
         
+        # Jinnah's scoring profile: balanced with slight political emphasis
+        self.personality_multiplier = 1.05
+        self.region_weights = REGION_WEIGHTS["conflict_zone"]
+
         # Jinnah's non-negotiable positions
         self.red_lines = [
             "Separate Muslim state (Pakistan) is non-negotiable",
@@ -67,28 +72,36 @@ class JinnahAgent(HistoricalAgent):
     
     _RESPONSES = {
         "territorial_disputes": [
-            "My dear {opponents}, the question of territory is not merely about land — it is about the very survival of Muslim civilization in the subcontinent. The two-nation theory is not a political slogan; it is a fundamental truth. Muslims and Hindus are separate nations with distinct cultures and aspirations. The areas where Muslims are in majority must form Pakistan. I am willing to discuss details, but the principle is non-negotiable.",
-            "My dear {opponents}, I have heard your counterarguments, but they rest on a flawed premise — that constitutional safeguards within a united India can protect Muslim interests. History tells us otherwise. In province after province where Congress ruled, Muslim rights were trampled. Wardha education, Bande Mataram, Hindi imposition — these are not hypothetical fears but documented realities. Partition is the only guarantee.",
-            "My dear {opponents}, let me be pragmatic rather than sentimental. We are three hundred million Muslims in the subcontinent. We have our own language, our own law, our own civilization. To ask us to exist as a permanent minority in someone else's state is to ask us to accept second-class citizenship in perpetuity. No self-respecting people would agree to that. Let us draw fair boundaries and part as friends rather than remain together as adversaries.",
-            "My dear {opponents}, I sense we are close to an impasse, so let me propose a practical framework. Let an independent boundary commission demarcate Muslim-majority districts. Let there be treaty agreements on trade, defense, and minority protection between the two successor states. Pakistan does not seek enmity with India — we seek sovereignty. These two things need not conflict.",
+            "My dear {opponents}, the two-nation theory is a fundamental truth. Muslim-majority areas must form Pakistan — I am willing to discuss details, but the principle is non-negotiable.",
+            "My dear {opponents}, constitutional safeguards within a united India cannot protect Muslim interests — history tells us otherwise. Partition is the only guarantee.",
+            "My dear {opponents}, we are three hundred million Muslims with our own civilization. To exist as a permanent minority is to accept second-class citizenship. Let us draw fair boundaries and part as friends.",
+            "My dear {opponents}, let an independent boundary commission demarcate Muslim-majority districts, with treaty agreements on trade and minority protection. Pakistan seeks sovereignty, not enmity.",
+            "My dear {opponents}, let me be pragmatic. No self-respecting people would accept perpetual minority status. Sovereignty is the only durable safeguard.",
+            "My dear {opponents}, the question is not whether to separate but how to do so with minimum disruption and maximum fairness to all communities.",
         ],
         "race_relations": [
-            "My respected {opponents}, the issue is not about race or color — it is about the fundamental differences between Muslim and Hindu civilizations. We are not inferior or superior; we are simply different. Muslims have their own history, heroes, and way of life. The Congress talks of unity, but what they mean is assimilation. Hindus and Muslims can live as good neighbors, but we cannot live as one nation.",
-            "My respected {opponents}, I was once called the Ambassador of Hindu-Muslim unity. I spent years trying to bridge the gap within the Congress. But I learned through bitter experience that a minority's rights cannot depend on the goodwill of the majority. Goodwill fades; constitutional protections get amended. Only sovereignty is permanent. That is why I changed my position — not out of hatred, but out of realism.",
-            "My respected {opponents}, let us not confuse respecting differences with promoting hatred. I have always maintained that Pakistan will protect its Hindu and Christian minorities — their temples, their rights, their property. A state built on the principle of self-determination must extend that principle to all its citizens. But self-determination begins with having a state of your own.",
-            "My respected {opponents}, I note that this debate keeps returning to abstract ideals while avoiding concrete realities. In Calcutta, in Noakhali, in Bihar — communities are already in conflict. The question is not whether we should separate but how to do so with minimum bloodshed. I urge us to focus on practical arrangements rather than philosophical objections to a process already underway.",
+            "My respected {opponents}, this is not about race — it is about civilizational differences. Muslims and Hindus can live as neighbors, but not as one nation.",
+            "My respected {opponents}, I was once called the Ambassador of Hindu-Muslim unity. Bitter experience taught me that a minority's rights cannot depend on majority goodwill.",
+            "My respected {opponents}, Pakistan will protect all its minorities — their temples, rights, and property. Self-determination must extend to all citizens.",
+            "My respected {opponents}, in Calcutta, Noakhali, and Bihar, communities are already in conflict. The question is how to separate with minimum bloodshed.",
+            "My respected {opponents}, respecting differences is not promoting hatred. Two sovereign states can be better neighbors than one divided house.",
+            "My respected {opponents}, only sovereignty is permanent — goodwill fades and constitutional protections get amended. I speak from experience, not ideology.",
         ],
         "economic_policy": [
-            "My dear {opponents}, Pakistan must be economically self-sufficient and guided by Islamic principles. The new state will promote Islamic banking, encourage Muslim entrepreneurship, and ensure development benefits all citizens. Economic development must go hand in hand with social justice. We are willing to trade, but we will not compromise our independence for economic gain.",
-            "My dear {opponents}, critics say Pakistan cannot be economically viable. I reject this categorically. Pakistan will have the Indus basin, the cotton fields of Punjab, the jute of Bengal, and the ports of Karachi and Chittagong. We have resources, we have labor, and we have the determination of a people building their own nation. What we lack in inherited infrastructure we will build through enterprise and faith.",
-            "My dear {opponents}, I am a lawyer and a businessman before I am a politician. Let me speak plainly about economics. The Muslim-majority regions have been systematically underdeveloped under colonial rule and Congress governance alike. Independence gives us the power to direct investment where it is needed, to develop our own industries, and to trade on our own terms. Dependency is not an economic policy — it is a form of subjugation.",
-            "My dear {opponents}, rather than debating economic theories, let me propose something concrete: a joint economic council between the two successor states to manage the transition — shared currency for a transition period, equitable division of assets and debts, and bilateral trade agreements. Pakistan seeks prosperity, not isolation. But prosperity on our own terms.",
+            "My dear {opponents}, Pakistan will be economically self-sufficient. We have the Indus basin, the cotton of Punjab, and the ports of Karachi.",
+            "My dear {opponents}, I propose a joint economic council for the transition — shared currency, equitable asset division, and bilateral trade. Pakistan seeks prosperity, not isolation.",
+            "My dear {opponents}, Muslim-majority regions were systematically underdeveloped. Independence gives us the power to direct investment where it is needed.",
+            "My dear {opponents}, dependency is not an economic policy — it is subjugation. Let us trade on equal terms between sovereign states.",
+            "My dear {opponents}, as a lawyer and businessman, I tell you plainly: Pakistan's resources are sufficient for a thriving economy built on enterprise and self-determination.",
+            "My dear {opponents}, economic viability is not the question — the question is whether we build our economy as free people or as dependents.",
         ],
         "_default": [
-            "My respected {opponents}, I have always believed in constitutional methods and democratic processes. The Muslim League has won the support of the Muslim masses through peaceful political mobilization. We are simply asking for the right to live as a free people in our own homeland. I am willing to negotiate terms, but I will not compromise on the fundamental principle of Pakistan.",
-            "My respected {opponents}, you ask me to trust in guarantees and safeguards. But I have sat in legislative councils where Muslim voices were outvoted on every matter of importance. I have watched Congress ministries impose their will on Muslim populations without consultation. Trust must be earned through power-sharing, not demanded through fine words. Give Muslims genuine power, or give them their own state.",
-            "My respected {opponents}, I do not wish to repeat myself, so let me advance the discussion. What specific guarantees can you offer that go beyond paper promises? I need mechanisms with teeth — veto powers, autonomous regions, separate electorates at minimum. If you cannot offer these within a united framework, then you must accept that partition is the only alternative. The status quo is not an option.",
-            "My respected {opponents}, we have debated long enough. The Muslim masses have made their will clear through the ballot box. The 1946 elections gave the Muslim League an overwhelming mandate. Democracy demands that this mandate be honored. Let us move from debate to action — appoint the boundary commission, agree on the transfer of power, and let two free nations begin their journey.",
+            "My respected {opponents}, we simply ask for the right to live as a free people. I will negotiate terms, but not the principle of Pakistan.",
+            "My respected {opponents}, trust must be earned through power-sharing, not demanded through fine words. Give Muslims genuine power, or give them their own state.",
+            "My respected {opponents}, what specific guarantees can you offer beyond paper promises? I need mechanisms with teeth — veto powers and autonomous regions at minimum.",
+            "My respected {opponents}, the 1946 elections gave the Muslim League an overwhelming mandate. Democracy demands this be honored.",
+            "My respected {opponents}, the status quo is not an option. Let us move from debate to practical arrangements.",
+            "My respected {opponents}, I have always believed in constitutional methods. But constitutional methods require constitutional protections — and those have failed us.",
         ],
     }
 

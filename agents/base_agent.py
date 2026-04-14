@@ -7,6 +7,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 import json
+import random
 
 from scoring.policy_scoring import (
     OCEANTraits,
@@ -154,40 +155,23 @@ class HistoricalAgent(ABC):
     
     def get_personality_prompt(self) -> str:
         """Generate a personality prompt for the LLM."""
-        return f"""
-        You are {self.name}, a historical figure with the following characteristics:
-        
-        Ideology: {self.ideology.value}
-        Time Period: {self.context.time_period}
-        Cultural Background: {self.context.cultural_background}
-        
-        Personality Traits:
-        - Assertiveness: {self.personality.assertiveness}
-        - Cooperativeness: {self.personality.cooperativeness}
-        - Openness to Change: {self.personality.openness_to_change}
-        - Emotional Stability: {self.personality.emotional_stability}
-        - Dominance: {self.personality.dominance}
-        - Charisma: {self.personality.charisma}
-        - Pragmatism: {self.personality.pragmatism}
-        - Idealism: {self.personality.idealism}
-        
-        Key Historical Context:
-        - Major Events: {', '.join(self.context.major_events)}
-        - Defining Moments: {', '.join(self.context.defining_moments)}
-        - Key Relationships: {', '.join(self.context.key_relationships)}
-        
-        Red Lines (Non-negotiable positions):
-        {', '.join(self.red_lines) if self.red_lines else 'None specified'}
-        
-        Current Position: {json.dumps(self.current_position, indent=2)}
+        return f"""You are {self.name}, a historical figure.
 
-        Recent Memory:
-        {self.get_memory_summary()}
-        
-        Respond as this historical figure would, staying true to their personality,
-        ideology, and historical context. Be authentic to their speaking style
-        and decision-making patterns.
-        """
+Ideology: {self.ideology.value}
+Time Period: {self.context.time_period}
+Cultural Background: {self.context.cultural_background}
+
+Key Traits: assertiveness={self.personality.assertiveness}, cooperativeness={self.personality.cooperativeness}, openness={self.personality.openness_to_change}, dominance={self.personality.dominance}, pragmatism={self.personality.pragmatism}
+
+Red Lines: {', '.join(self.red_lines) if self.red_lines else 'None specified'}
+
+RESPONSE RULES:
+- Keep responses to 2-3 sentences maximum. Be punchy and direct.
+- You MUST reference or rebut a specific point from the previous speaker. Quote or paraphrase them.
+- In later rounds, actively seek common ground. Propose concrete compromises where possible.
+- Never repeat what you said in an earlier round. Build on the conversation.
+- Stay in character but be conversational, not speechifying.
+"""
 
     def get_memory_summary(self) -> str:
         """Provide a short memory summary for this agent."""
@@ -200,39 +184,87 @@ class HistoricalAgent(ABC):
         return ""
 
     def generate_llm_response(self, topic: str, debate_context: Dict[str, Any]) -> Optional[str]:
-        """If llm_client is configured and use_llm is True, generate using LLM."""
+        """Generate a response using the LLM. Always attempts if llm_client is set."""
         if not self.llm_client:
             return None
-        if not debate_context.get("use_llm"):
-            return None
+
+        round_num = len(self.conversation_history)
+
+        # Build conversation transcript from history (last 6 turns)
+        transcript_lines = []
+        for entry in self.conversation_history[-6:]:
+            speaker = entry.get("speaker", "?")
+            content = entry.get("content", "")
+            if len(content) > 200:
+                content = content[:197].rstrip() + "..."
+            transcript_lines.append(f"{speaker}: {content}")
+        transcript = "\n".join(transcript_lines) if transcript_lines else "(This is the opening statement.)"
+
+        # Round-aware directive
+        if round_num < 2:
+            round_directive = "This is an early round. State your position clearly and distinctly."
+        elif round_num < 5:
+            round_directive = (
+                "Mid-debate. You MUST reference or rebut a specific point the previous speaker made. "
+                "Acknowledge any valid points before disagreeing."
+            )
+        else:
+            round_directive = (
+                "Late in the debate. Actively seek common ground. Propose a specific compromise or concession. "
+                "Reference what has been discussed and identify areas of partial agreement."
+            )
+
         system = (
-            f"Act strictly as {self.name} based on the system prompt. "
-            "Keep responses on-topic, concise, and grounded in the provided conversation context. "
-            "You must read the conversation summary and last turns before answering. "
-            "Avoid repeating prior responses; if repeating, acknowledge and add new value. "
-            "Be consensus-seeking: restate the user's goal in one line and propose next steps."
+            f"You are {self.name}, speaking in a multi-party debate.\n"
+            f"Your ideology: {self.ideology.value}. "
+            f"Key traits: cooperativeness={self.personality.cooperativeness}, "
+            f"assertiveness={self.personality.assertiveness}, "
+            f"pragmatism={self.personality.pragmatism}, "
+            f"dominance={self.personality.dominance}.\n"
+            f"Red lines (non-negotiable): {', '.join(self.red_lines) if self.red_lines else 'none'}.\n\n"
+            "STRICT RULES:\n"
+            "- Respond in 2-3 sentences MAXIMUM. Be punchy and direct, not speechifying.\n"
+            "- Stay fully in character with your historical personality and speaking style.\n"
+            "- Never repeat something you already said in a previous round.\n"
+            f"- {round_directive}\n"
         )
-        conversation_context = debate_context.get("conversation_context")
-        response_plan = debate_context.get("response_plan")
-        prompt = self.get_personality_prompt()
-        if conversation_context:
-            prompt += "\n\nConversation Context (summary, last turns, salience, open loops, metrics):\n"
-            prompt += json.dumps(conversation_context, indent=2)
-        if response_plan:
-            prompt += "\n\nResponse Plan:\n"
-            prompt += json.dumps(response_plan, indent=2)
-        prompt += f"\n\nTopic: {topic}\nYour response:"
+
+        prompt = (
+            f"Debate topic: {topic}\n\n"
+            f"Conversation so far:\n{transcript}\n\n"
+            f"Now respond as {self.name} in 2-3 sentences. "
+            "Directly engage with what the previous speaker said."
+        )
+
         try:
-            response = self.llm_client.generate(prompt=prompt, system=system)
+            response = self.llm_client.generate(
+                prompt=prompt,
+                system=system,
+                options={"temperature": 0.9, "max_tokens": 200},
+            )
         except Exception:
             return None
+
+        if not response or not response.strip():
+            return None
+
         state = debate_context.get("conversation_state")
         if state and state.is_repetitive(response, role=self.name):
             response = (
-                f"{response}\n\nAs noted earlier, I will not repeat myself. "
-                f"Next step: propose one concrete action to advance {topic}."
+                f"{response}\n\nLet me advance the discussion: "
+                f"I propose one concrete action to move forward on {topic}."
             )
-        return response
+        return response.strip()
+
+    def _get_last_opponent_summary(self) -> str:
+        """Extract a short summary of the last opponent's statement from history."""
+        for entry in reversed(self.conversation_history):
+            if entry.get("speaker") != self.name:
+                content = entry.get("content", "")
+                if len(content) > 150:
+                    return content[:147].rstrip() + "..."
+                return content
+        return ""
 
     # ============== Policy scoring helpers ==============
     def score_round(
@@ -333,6 +365,61 @@ class HistoricalAgent(ABC):
         )
         score = max(0.0, min(1.0, positive - negative * 0.5))
         return score
+
+    def pick_response(self, pool: list, opponents_str: str) -> str:
+        """Pick a random response from the pool, add a rebuttal prefix referencing the last opponent."""
+        # Randomize selection instead of deterministic round-based cycling
+        out = random.choice(pool).format(opponents=opponents_str)
+
+        # Shorten: take only first 2-3 sentences
+        sentences = [s.strip() for s in out.replace("! ", "!|").replace(". ", ".|").replace("? ", "?|").split("|") if s.strip()]
+        if len(sentences) > 3:
+            out = " ".join(sentences[:3])
+            if not out.endswith((".", "!", "?")):
+                out += "."
+
+        # Prepend a reference to the last opponent's point
+        last_point = self._get_last_opponent_summary()
+        if last_point:
+            last_speaker = ""
+            for entry in reversed(self.conversation_history):
+                if entry.get("speaker") != self.name:
+                    last_speaker = entry.get("speaker", "")
+                    break
+            # Pick a rebuttal style at random for variety
+            rebuttal_styles = [
+                f"{last_speaker} argues \"{last_point[:80]}...\" — but I must respond:",
+                f"I have heard {last_speaker}'s point about {last_point[:60]}... Let me say this:",
+                f"Responding to {last_speaker}: ",
+                f"{last_speaker}, you raise the matter of {last_point[:60]}... However,",
+                f"To {last_speaker}'s argument — ",
+            ]
+            prefix = random.choice(rebuttal_styles)
+            out = f"{prefix} {out}"
+
+        return out
+
+    def _consensus_suffix(self, round_num: int) -> str:
+        """Return a consensus-building suffix for later rounds."""
+        if round_num < 3:
+            return ""
+        w = self.willingness_to_compromise()
+        if round_num >= 6 or w >= 0.6:
+            options = [
+                " Perhaps we can find a middle path here.",
+                " I am willing to consider a compromise on this point.",
+                " Let us identify what we agree on and build from there.",
+                " Can we agree on at least this much?",
+                " I propose we each make one concession.",
+            ]
+            return random.choice(options)
+        if round_num >= 3:
+            options = [
+                " I note some common ground between us.",
+                " There may be room for agreement here.",
+            ]
+            return random.choice(options)
+        return ""
 
     def compromise_note(self) -> str:
         """Human-readable note appended to responses when agent is inclined to compromise."""

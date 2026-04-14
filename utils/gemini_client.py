@@ -48,8 +48,8 @@ class GeminiClient:
             )
         contents.append({"role": "user", "parts": [{"text": prompt}]})
 
-        temperature = 0.4
-        max_tokens = 1024
+        temperature = 0.9
+        max_tokens = 256
         if options:
             temperature = options.get("temperature", temperature)
             max_tokens = options.get("max_tokens", max_tokens)
