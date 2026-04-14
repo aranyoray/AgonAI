@@ -4,6 +4,7 @@ Mahatma Gandhi AI Agent - Non-violence ideology
 
 from typing import Dict, List, Any
 from .base_agent import HistoricalAgent, PersonalityTraits, HistoricalContext, Ideology
+from scoring.policy_scoring import REGION_WEIGHTS
 
 
 class GandhiAgent(HistoricalAgent):
@@ -48,6 +49,10 @@ class GandhiAgent(HistoricalAgent):
             memory_client=memory_client
         )
         
+        # Gandhi's scoring profile: high social benefit, low political cost
+        self.personality_multiplier = 0.85
+        self.region_weights = REGION_WEIGHTS["democratic"]
+
         # Gandhi's non-negotiable positions
         self.red_lines = [
             "Non-violence (Ahimsa) as the only path to truth",
@@ -68,28 +73,36 @@ class GandhiAgent(HistoricalAgent):
     
     _RESPONSES = {
         "territorial_disputes": [
-            "My dear {opponents}, I speak to you with love and compassion. Territorial disputes are born from the illusion of separation. We are all children of the same divine source, and no piece of land is worth the blood of our brothers and sisters. The path of violence only begets more violence. Instead, let us sit together, share our stories, and find the truth that unites us.",
-            "My dear {opponents}, I must return to this point with renewed conviction. When I walked to the sea to make salt, it was not the salt I sought but the recognition that unjust laws lose their power when good people refuse to obey them. Territorial claims enforced by guns will never bring lasting peace. I propose we establish a joint council where every community has a voice.",
-            "My dear {opponents}, I sense frustration in our dialogue, and I understand it. But consider this: in South Africa, I saw how those who seize land by force must spend all their energy defending it. The true owner of any land is the one who serves its people. Let us redirect our energy from claiming borders to uplifting those who live within them.",
-            "My dear {opponents}, we have spoken at length and yet the fundamental truth remains: no one wins a war over land. The victor inherits ruins and resentment. I have seen this in my own country. Let me propose something concrete: a shared governance zone where both sides administer together, proving that cooperation yields more than conquest.",
+            "My dear {opponents}, no piece of land is worth the blood of our brothers. The path of violence only begets more violence.",
+            "My dear {opponents}, those who seize land by force must spend all their energy defending it. The true owner of any land is the one who serves its people.",
+            "My dear {opponents}, I propose a joint council where every community has a voice. Territorial claims enforced by guns will never bring lasting peace.",
+            "My dear {opponents}, no one wins a war over land — the victor inherits ruins. Let me propose a shared governance zone where both sides administer together.",
+            "My dear {opponents}, when I walked to the sea to make salt, I sought recognition that unjust laws lose power when good people refuse to obey.",
+            "My dear {opponents}, let us redirect our energy from claiming borders to uplifting those who live within them.",
         ],
         "race_relations": [
-            "My beloved {opponents}, the concept of racial superiority is a great evil that has caused untold suffering. In the eyes of God, we are all equal. I have seen how prejudice destroys the soul of both oppressor and oppressed. The solution is not to fight hatred with hatred, but to transform it with love.",
-            "My beloved {opponents}, let me share what I learned in Durban. When I was thrown off that train for the color of my skin, I realized that racism is not strength — it is fear dressed in authority. Every person who claims racial superiority is confessing their own insecurity. We must answer fear with courage and hatred with patient love.",
-            "My beloved {opponents}, I notice we keep circling the same ground. Let me try a different approach: rather than debating whether races are equal in theory, I propose we undertake a practical experiment. Let representatives of every community work together on a shared project — building a school, perhaps. Actions reveal our common humanity faster than words.",
-            "My beloved {opponents}, the spinning wheel taught me something about race as well. When I spin cotton, I cannot tell which thread came from which field. Woven together, they become something strong and beautiful. That is what humanity is — threads of different colors making one cloth. Let us weave together rather than unravel each other.",
+            "My beloved {opponents}, racial superiority is a great evil. In the eyes of God, we are all equal. We must transform hatred with love.",
+            "My beloved {opponents}, when I was thrown off that train in Durban, I realized racism is not strength — it is fear dressed in authority.",
+            "My beloved {opponents}, rather than debating equality in theory, let communities work together on a shared project. Actions reveal our common humanity faster than words.",
+            "My beloved {opponents}, like threads of different colors woven into one cloth — that is humanity. Let us weave together rather than unravel each other.",
+            "My beloved {opponents}, prejudice destroys the soul of both oppressor and oppressed. The answer is not more hatred but patient love.",
+            "My beloved {opponents}, I propose a practical experiment in unity — let it speak louder than our arguments.",
         ],
         "economic_policy": [
-            "My dear {opponents}, the current economic system creates great inequality. The rich become richer while the poor become poorer. I believe in the economics of simple living and high thinking. Each village should be self-sufficient. The spinning wheel is not just a tool — it is a symbol of our independence.",
-            "My dear {opponents}, I must challenge the assumption that industrialization is progress. In my ashram, we proved that a community can thrive by producing what it needs. When you import everything, you export your dignity. I do not say we should reject all modern tools, but the economy must serve the village, not the factory owner.",
-            "My dear {opponents}, let me offer a concrete proposal rather than repeating principles. What if we designate ten villages as pilot communities for self-reliance? Give them one year. Measure their welfare, their dignity, their happiness — not just their output. If they fail, I will reconsider. But I believe they will thrive.",
-            "My dear {opponents}, I hear your arguments about efficiency and scale, and I respect them. But efficiency for whom? An economy that leaves millions hungry while producing surplus is not efficient — it is cruel. Let us define economic success not by gross product but by whether the poorest person has enough to eat and enough purpose to live with dignity.",
+            "My dear {opponents}, the economy must serve the village, not the factory owner. Each village should be self-sufficient.",
+            "My dear {opponents}, an economy that leaves millions hungry while producing surplus is not efficient — it is cruel.",
+            "My dear {opponents}, let us designate pilot communities for self-reliance. Measure welfare and dignity, not just output.",
+            "My dear {opponents}, when you import everything, you export your dignity. The spinning wheel is a symbol of our independence.",
+            "My dear {opponents}, let us define economic success by whether the poorest person has enough to eat and enough purpose to live with dignity.",
+            "My dear {opponents}, I do not reject modern tools, but we must not subordinate human welfare to industrial metrics.",
         ],
         "_default": [
-            "My dear {opponents}, I see that we have different approaches, but I believe we all seek the same thing — a better world for our children. The question is not who is right, but what is right. Truth is not a possession to be defended, but a path to be walked together.",
-            "My dear {opponents}, I have been listening carefully to each of you, and I hear pain beneath the positions. When we argue from fear, we build walls. When we argue from hope, we build bridges. Let me ask each of you: what is the world you want your grandchildren to inherit? Start there, and I believe we will find common ground.",
-            "My dear {opponents}, permit me to be direct. We have exchanged fine words, but words without action are like a garden without water. I propose that each of us name one concrete concession we are willing to make today — not tomorrow, not in principle, but today. I will begin: I am willing to accept a slower timeline if it means a more just outcome.",
-            "My dear {opponents}, I sense we are approaching a turning point. In every negotiation I have known, there comes a moment when stubbornness must give way to wisdom. I do not ask you to abandon your principles — only to hold them with open hands rather than clenched fists. What can we build together that none of us could build alone?",
+            "My dear {opponents}, the question is not who is right, but what is right. Truth is a path to be walked together.",
+            "My dear {opponents}, I hear pain beneath the positions. When we argue from hope, we build bridges. What world do you want your grandchildren to inherit?",
+            "My dear {opponents}, let each of us name one concrete concession we are willing to make today. I will begin: I accept a slower timeline if it means a more just outcome.",
+            "My dear {opponents}, stubbornness must give way to wisdom. What can we build together that none of us could build alone?",
+            "My dear {opponents}, words without action are like a garden without water. Let us move from debate to deeds.",
+            "My dear {opponents}, I do not ask you to abandon your principles — only to hold them with open hands rather than clenched fists.",
         ],
     }
 
@@ -104,10 +117,10 @@ class GandhiAgent(HistoricalAgent):
 
         pool = self._RESPONSES.get(topic, self._RESPONSES["_default"])
         round_num = len(self.conversation_history)
-        out = pool[round_num % len(pool)].format(opponents=opponents_str)
+        out = self.pick_response(pool, opponents_str)
+        out += self._consensus_suffix(round_num)
 
-        note = self.compromise_note()
-        return out + note
+        return out
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""

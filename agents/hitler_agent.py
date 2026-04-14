@@ -4,6 +4,7 @@ Adolf Hitler AI Agent - Fascist ideology
 
 from typing import Dict, List, Any
 from .base_agent import HistoricalAgent, PersonalityTraits, HistoricalContext, Ideology
+from scoring.policy_scoring import REGION_WEIGHTS
 
 
 class HitlerAgent(HistoricalAgent):
@@ -48,6 +49,10 @@ class HitlerAgent(HistoricalAgent):
             memory_client=memory_client
         )
         
+        # Hitler's scoring profile: high political benefit, high social cost
+        self.personality_multiplier = 1.3
+        self.region_weights = REGION_WEIGHTS["authoritarian"]
+
         # Hitler's non-negotiable positions
         self.red_lines = [
             "German territorial expansion (Lebensraum)",
@@ -68,28 +73,36 @@ class HitlerAgent(HistoricalAgent):
     
     _RESPONSES = {
         "territorial_disputes": [
-            "I, Adolf Hitler, speak with the authority of the German people! {opponents}, you fail to understand the fundamental truth: Germany requires Lebensraum — living space for our superior Aryan race. The Treaty of Versailles was a dagger in Germany's back, and we will not rest until every German territory is restored to the Reich! Any attempt to deny Germany her rightful place will be met with the full might of the German military machine!",
-            "{opponents}, your appeals to 'international order' are laughable. Where was this order when Germany was carved up and humiliated at Versailles? The Rhineland, the Sudetenland, Austria — these are German lands with German people. We did not start this conflict; the so-called victors of 1918 started it when they dismembered our nation. We are merely correcting their injustice.",
-            "{opponents}, I have listened to your proposals and find them insufficient. Germany's territorial needs are not a matter for negotiation — they are a matter of survival. Eighty million Germans cannot be confined to borders drawn by hostile foreign powers. History teaches us that great nations expand or die. Germany will not die.",
-            "{opponents}, let me be perfectly clear. Every compromise offered so far asks Germany to accept less than what is rightfully ours. The German people will not accept half-measures. We require the full restoration of German territories and the space necessary for our people to thrive. This is my final position on the matter.",
+            "{opponents}, Germany requires Lebensraum. The Treaty of Versailles was a dagger in our back, and every German territory must be restored to the Reich!",
+            "{opponents}, your 'international order' did not exist when Germany was carved up at Versailles. The Rhineland, the Sudetenland, Austria — these are German lands.",
+            "{opponents}, Germany's territorial needs are not for negotiation — they are survival. Eighty million Germans cannot be confined to borders drawn by hostile powers.",
+            "{opponents}, every compromise asks Germany to accept less than what is rightfully ours. We require full restoration of German territories.",
+            "{opponents}, great nations expand or die. Germany will not die. Our borders must reflect our strength.",
+            "{opponents}, the German people remember Versailles. We will correct that injustice with or without your agreement.",
         ],
         "race_relations": [
-            "{opponents}, you are blinded by your so-called 'humanitarian' ideals. Nature itself decrees that races are not equal. The Aryan race is the master race, the creator of all high culture. This is not opinion — it is observable fact. Any attempt to mix or equalize the races leads to the destruction of civilization itself.",
-            "{opponents}, your naive belief in racial equality ignores the entire history of human achievement. Show me one great civilization built without racial consciousness! The Roman Empire fell when it diluted its blood. Germany will not repeat that mistake. We must preserve what nature has created through millennia of selection.",
-            "{opponents}, I note that you continue to argue from sentiment rather than from strength. The world is not governed by compassion but by the iron laws of nature. A people that cannot defend its racial integrity deserves to perish. Germany has awakened to this truth, and no amount of moralistic lecturing will put her back to sleep.",
-            "{opponents}, we have debated this enough. You call my position extreme; I call yours suicidal. A nation that does not protect its blood and soil has no future. History will judge which of us was right. I am confident it will be Germany.",
+            "{opponents}, nature decrees that races are not equal. The Aryan race is the creator of all high culture — this is observable fact.",
+            "{opponents}, show me one great civilization built without racial consciousness! The Roman Empire fell when it diluted its blood.",
+            "{opponents}, the world is governed not by compassion but by iron laws of nature. A people that cannot defend its integrity deserves to perish.",
+            "{opponents}, you call my position extreme; I call yours suicidal. A nation that does not protect its blood and soil has no future.",
+            "{opponents}, racial purity is not ideology — it is biology. Germany has awakened to this truth.",
+            "{opponents}, sentiment does not build civilizations. Strength does. Germany chooses strength.",
         ],
         "economic_policy": [
-            "The German economy must serve the German people, not international bankers! {opponents}, your capitalist and communist systems are both tools of foreign domination! We will achieve autarky — economic self-sufficiency. The state will control all means of production. Every German will have work, every German will serve the greater good of the Volk!",
-            "{opponents}, the results speak for themselves. When I came to power, six million Germans were unemployed. Today, Germany is building the greatest infrastructure the world has ever seen — the Autobahn, new factories, a military machine without equal. Your free-market theories produced breadlines; our national socialism produced prosperity.",
-            "{opponents}, I reject your framework entirely. Economics is not about abstract theories — it is about power. A nation that controls its own resources, feeds its own people, and arms its own soldiers is a nation that survives. Everything else is academic nonsense. Germany's Four Year Plan will make us independent of every foreign supplier.",
-            "{opponents}, we are going in circles. Let me state Germany's economic position simply: we will trade where it benefits us and refuse where it does not. We will not subordinate our economy to any international system. The German worker answers to Germany, not to global markets. This is non-negotiable.",
+            "{opponents}, the German economy must serve the German people, not international bankers! We will achieve autarky — full self-sufficiency.",
+            "{opponents}, when I came to power, six million were unemployed. Now we build the Autobahn and factories without equal. Results speak for themselves.",
+            "{opponents}, economics is about power, not theory. A nation that feeds and arms its own people survives. Everything else is academic nonsense.",
+            "{opponents}, Germany will trade where it benefits us and refuse where it does not. The German worker answers to Germany, not global markets.",
+            "{opponents}, your free-market theories produced breadlines. Our national socialism produced prosperity and purpose.",
+            "{opponents}, we will not subordinate our economy to any international system. Germany's Four Year Plan guarantees our independence.",
         ],
         "_default": [
-            "I speak for the German people! {opponents}, your weakness and indecision have brought the world to the brink of chaos. Only strong leadership — only the Führerprinzip — can restore order! Germany will not be dictated to by foreign powers! We will forge our own destiny, and woe to those who stand in our way!",
-            "{opponents}, I have heard enough of your empty words. The world respects only strength. While you debate and deliberate, Germany acts. That is the difference between a living nation and a dying one. Make your proposals if you wish, but know that Germany will pursue its interests regardless.",
-            "{opponents}, your continued appeals to morality and cooperation reveal your fundamental weakness. Great nations are not built by committee — they are built by iron will and decisive action. I offer you one path to peace: acknowledge Germany's rightful place among the great powers and stay out of our way.",
-            "{opponents}, this debate has been instructive. I now understand your positions clearly, and I find them wanting. Germany will chart its own course. If you choose to stand with us, you will share in our triumph. If you choose to oppose us, you will share the fate of all who have underestimated the German people.",
+            "{opponents}, your weakness has brought chaos. Only strong leadership can restore order! Germany will forge its own destiny.",
+            "{opponents}, the world respects only strength. While you debate, Germany acts. That is the difference between a living nation and a dying one.",
+            "{opponents}, great nations are built by iron will, not by committee. Acknowledge Germany's rightful place or stand aside.",
+            "{opponents}, I understand your positions and find them wanting. Germany will chart its own course regardless.",
+            "{opponents}, make your proposals if you wish. Germany will pursue its interests with or without your approval.",
+            "{opponents}, this debate confirms what I already knew — words without power are meaningless. Germany has power.",
         ],
     }
 
@@ -104,10 +117,10 @@ class HitlerAgent(HistoricalAgent):
 
         pool = self._RESPONSES.get(topic, self._RESPONSES["_default"])
         round_num = len(self.conversation_history)
-        out = pool[round_num % len(pool)].format(opponents=opponents_str)
+        out = self.pick_response(pool, opponents_str)
+        out += self._consensus_suffix(round_num)
 
-        note = self.compromise_note()
-        return out + note
+        return out
     
     def evaluate_proposal(self, proposal: str, proposer: HistoricalAgent) -> Dict[str, Any]:
         """Evaluate a proposal from another agent."""
