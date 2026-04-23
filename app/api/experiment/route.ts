@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAgent } from "@/lib/agents/agent-registry";
+import { XAIClient } from "@/lib/utils/xai-client";
 import {
   getExperimentConfigs,
   runExperiment,
@@ -47,13 +48,15 @@ export async function POST(request: NextRequest) {
     const topic = String(body.topic ?? "war");
     const maxRounds = parseInt(String(body.maxRounds ?? "15"), 10);
 
+    const llmClient = new XAIClient();
+
     let historicalAgents;
     const histNames = (body.historicalAgents ?? []) as string[];
     if (histNames.length >= 2) {
-      historicalAgents = histNames.slice(0, 2).map((n) => createAgent(n));
+      historicalAgents = histNames.slice(0, 2).map((n) => createAgent(n, { llmClient }));
     }
 
-    const configs = getExperimentConfigs({ topic, historicalAgents, maxRounds });
+    const configs = getExperimentConfigs({ topic, historicalAgents, maxRounds, llmClient });
 
     const idx = experimentId - 1;
     if (idx < 0 || idx >= configs.length) {

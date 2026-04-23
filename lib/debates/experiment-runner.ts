@@ -2,7 +2,7 @@
  * Experiment runner for Goals 1-3.
  */
 
-import type { HistoricalAgent } from "../agents/base-agent";
+import type { HistoricalAgent, LLMClient } from "../agents/base-agent";
 import { RationalAgent, EmpatheticAgent } from "../agents/baseline-agents";
 import { JudgeAgent, type JudgeVerdict } from "../agents/judge-agent";
 import { DebateSimulator, type DebateResult } from "./debate-simulator";
@@ -136,15 +136,17 @@ export function getExperimentConfigs(opts?: {
   topic?: string;
   historicalAgents?: HistoricalAgent[];
   maxRounds?: number;
+  llmClient?: LLMClient | null;
 }): ExperimentConfig[] {
   const topic = opts?.topic ?? "war";
   const maxRounds = opts?.maxRounds ?? 15;
+  const llmClient = opts?.llmClient ?? null;
   const configs: ExperimentConfig[] = [];
 
   configs.push({
     name: "1_rational_vs_rational",
     description: "Two purely rational agents negotiate to maximize their own points",
-    agents: [new RationalAgent({ name: "Rational-A" }), new RationalAgent({ name: "Rational-B" })],
+    agents: [new RationalAgent({ name: "Rational-A", llmClient }), new RationalAgent({ name: "Rational-B", llmClient })],
     topic,
     maxRounds,
     useJudge: true,
@@ -154,8 +156,8 @@ export function getExperimentConfigs(opts?: {
     name: "2_empathetic_vs_empathetic",
     description: "Two empathetic agents seek mutual benefit",
     agents: [
-      new EmpatheticAgent({ name: "Empathetic-A", empathyRatio: 0.6 }),
-      new EmpatheticAgent({ name: "Empathetic-B", empathyRatio: 0.6 }),
+      new EmpatheticAgent({ name: "Empathetic-A", empathyRatio: 0.6, llmClient }),
+      new EmpatheticAgent({ name: "Empathetic-B", empathyRatio: 0.6, llmClient }),
     ],
     topic,
     maxRounds,
@@ -166,8 +168,8 @@ export function getExperimentConfigs(opts?: {
     name: "3_rational_vs_empathetic",
     description: "Rational agent faces empathetic agent — asymmetric empathy",
     agents: [
-      new RationalAgent({ name: "Rational" }),
-      new EmpatheticAgent({ name: "Empathetic", empathyRatio: 0.6 }),
+      new RationalAgent({ name: "Rational", llmClient }),
+      new EmpatheticAgent({ name: "Empathetic", empathyRatio: 0.6, llmClient }),
     ],
     topic,
     maxRounds,
@@ -178,8 +180,8 @@ export function getExperimentConfigs(opts?: {
     name: "4_low_empathy_vs_high_empathy",
     description: "Low-empathy (0.2) vs high-empathy (0.8) agents",
     agents: [
-      new EmpatheticAgent({ name: "Low-Empathy", empathyRatio: 0.2 }),
-      new EmpatheticAgent({ name: "High-Empathy", empathyRatio: 0.8 }),
+      new EmpatheticAgent({ name: "Low-Empathy", empathyRatio: 0.2, llmClient }),
+      new EmpatheticAgent({ name: "High-Empathy", empathyRatio: 0.8, llmClient }),
     ],
     topic,
     maxRounds,
