@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep:*)",
+      "Bash(ls C:\\\\raviraj-data\\\\AgonAI/.env*)",
+      "Bash(ls C:\\\\raviraj-data\\\\AgonAI/*.env*)",
+      "Bash(grep -E \"\\\\.\\(py|js|json|html|css|txt|md\\)$\")",
+      "Bash(npx create-next-app@latest nextjs-app --typescript --eslint --no-tailwind --no-src-dir --app --no-import-alias --use-npm)",
+      "Bash(cp -r nextjs-app/node_modules .)",
+      "Bash(cp -r nextjs-app/app .)",
+      "Bash(npm install:*)",
+      "Bash(npx next:*)",
+      "Bash(ls -la *.py)",
+      "Bash(npx tsc:*)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"next-server\")",
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/api/simulate -X POST -H \"Content-Type: application/json\" -d '{\"agents\":[\"hitler\",\"gandhi\",\"jinnah\"],\"topic\":\"nuclear weapons\",\"rounds\":3}')",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\raviraj\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--raviraj-data-AgonAI\\\\\\\\30202944-0086-4a12-85ba-5c7f0fdc37f1\\\\\\\\tasks\\\\\\\\bzyur611q.output)",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\raviraj\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--raviraj-data-AgonAI\\\\\\\\30202944-0086-4a12-85ba-5c7f0fdc37f1\\\\\\\\tasks\\\\\\\\bensu0daj.output)",
+      "Bash(wc:*)",
+      "Skill(investigate)",
+      "Bash(ls .env*)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"Should nations share resources equally?\",\"rounds\":8,\"stream\":false}')",
+      "Bash(node -e ':*)",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\",\"jinnah\"],\"topic\":\"war\",\"rounds\":12,\"stream\":false}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\",\"jinnah\"],\"topic\":\"Should borders be open?\",\"rounds\":9,\"stream\":false}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"war\",\"rounds\":10,\"stream\":false}')",
+      "Bash(tasklist)",
+      "Bash(curl -s http://localhost:3000/api/simulate)",
+      "Bash(node -e \"process.stdin.on\\('data',d=>console.log\\(d.toString\\(\\)\\)\\)\")",
+      "Bash(curl -s -N -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"Should nations cooperate?\",\"rounds\":6,\"stream\":true}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"Should nations cooperate?\",\"rounds\":6,\"stream\":true}' --max-time 90)",
+      "Bash(curl -s -N -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"Is war justified?\",\"rounds\":6,\"stream\":true}' --max-time 120)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(curl -s -N -X POST http://localhost:3000/api/simulate -H 'Content-Type: application/json' -d '{\"agents\":[\"hitler\",\"gandhi\"],\"topic\":\"peace\",\"rounds\":4,\"stream\":true}' --max-time 90)"
+    ]
+  }
+}
