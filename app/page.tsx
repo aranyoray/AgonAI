@@ -237,6 +237,7 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [rawJson, setRawJson] = useState("");
   const [streamingMessages, setStreamingMessages] = useState<ChatMsg[]>([]);
+  const [thinkingSpeaker, setThinkingSpeaker] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Experiment state
@@ -282,6 +283,7 @@ export default function Home() {
     setResult(null);
     setRawJson("");
     setStreamingMessages([]);
+    setThinkingSpeaker("");
 
     try {
       const sessionId = typeof window !== "undefined" ? localStorage.getItem("sessionId") : null;
@@ -316,7 +318,10 @@ export default function Home() {
           if (!line.trim()) continue;
           try {
             const event = JSON.parse(line);
-            if (event.type === "round") {
+            if (event.type === "thinking") {
+              setThinkingSpeaker(event.speaker);
+            } else if (event.type === "round") {
+              setThinkingSpeaker("");
               const msg: ChatMsg = {
                 round: event.round,
                 speaker: event.speaker,
@@ -324,6 +329,7 @@ export default function Home() {
               };
               setStreamingMessages((prev) => [...prev, msg]);
             } else if (event.type === "complete") {
+              setThinkingSpeaker("");
               const data = { ...event };
               delete data.type;
               if (data.sessionId && typeof window !== "undefined") {
@@ -602,14 +608,12 @@ export default function Home() {
                 />
               );
             })}
-            {loading && displayMessages.length === 0 && (
+            {loading && !result && (
               <div className="chat-thinking">
-                <span className="spinner" /> Agents are thinking...
-              </div>
-            )}
-            {loading && displayMessages.length > 0 && !result && (
-              <div className="chat-thinking">
-                <span className="spinner" /> Next speaker...
+                <span className="spinner" />{" "}
+                {thinkingSpeaker
+                  ? <><span style={{ color: getColor(thinkingSpeaker), fontWeight: 600 }}>{thinkingSpeaker}</span> is thinking...</>
+                  : "Starting debate..."}
               </div>
             )}
             <div ref={chatEndRef} />

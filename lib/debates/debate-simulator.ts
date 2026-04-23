@@ -57,6 +57,7 @@ export class DebateSimulator {
     topic: string,
     initialContext?: Record<string, unknown>,
     onRound?: (round: DebateRound) => void | Promise<void>,
+    onThinking?: (speaker: string, roundNumber: number) => void | Promise<void>,
   ): Promise<DebateResult> {
     if (agents.length < 2) throw new Error("At least 2 agents are required");
 
@@ -96,6 +97,9 @@ export class DebateSimulator {
 
       currentContext.memory_summary = currentSpeaker.getMemorySummary();
       currentContext.shared_memory = this.getSharedMemorySummary();
+
+      // Notify that this speaker is about to generate
+      if (onThinking) await onThinking(currentSpeaker.name, roundNum + 1);
 
       // Generate response
       const response = await currentSpeaker.generateResponse(

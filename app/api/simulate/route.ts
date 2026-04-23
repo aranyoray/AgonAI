@@ -99,6 +99,8 @@ export async function POST(request: NextRequest) {
             content: rd.response.trim(),
           };
           await writer.write(encoder.encode(JSON.stringify(chunk) + "\n"));
+        }, async (speaker, roundNumber) => {
+          await writer.write(encoder.encode(JSON.stringify({ type: "thinking", speaker, round: roundNumber }) + "\n"));
         });
 
         scoreAllRounds(result, agents, topic, rounds);
