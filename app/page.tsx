@@ -230,6 +230,7 @@ export default function Home() {
   const [rounds, setRounds] = useState(12);
   const [summaryOnly, setSummaryOnly] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // Results state
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,6 +259,7 @@ export default function Home() {
   const profile = activeProfile ? AGENT_PROFILES[activeProfile] : null;
 
   const toggleAgent = useCallback((key: string) => {
+    setValidationError("");
     setSelectedAgents((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
@@ -267,14 +269,15 @@ export default function Home() {
       .filter(([, v]) => v)
       .map(([k]) => k);
     if (agents.length < 2) {
-      setRawJson("Please select at least 2 agents to start a debate.");
+      setValidationError("Please select at least 2 agents to start a debate.");
       return;
     }
     if (!topic) {
-      setRawJson("Please enter a debate topic.");
+      setValidationError("Please enter a debate topic.");
       return;
     }
 
+    setValidationError("");
     setLoading(true);
     setResult(null);
     setRawJson("");
@@ -442,8 +445,8 @@ export default function Home() {
 
           <aside className="agent-profile">
             <div className="agent-header">
-              <span className={`avatar ${profile?.avatarClass ?? "avatar-hitler"}`}>
-                {profile?.initials ?? "AH"}
+              <span className={`avatar ${profile?.avatarClass ?? ""}`} style={!profile ? { background: "#94a3b8" } : undefined}>
+                {profile?.initials ?? "?"}
               </span>
               <div>
                 <h3>{profile?.name ?? "Select an agent"}</h3>
@@ -516,8 +519,8 @@ export default function Home() {
             type="text"
             placeholder="Type any topic, e.g. 'Should nations have open borders?'"
             value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            style={{ flex: 1 }}
+            onChange={(e) => { setValidationError(""); setTopic(e.target.value); }}
+            className="topic-input"
           />
         </div>
         <div className="form-row">
@@ -536,6 +539,13 @@ export default function Home() {
             <input type="checkbox" checked={summaryOnly} onChange={() => setSummaryOnly(!summaryOnly)} /> Summary only
           </label>
         </div>
+        {validationError && (
+          <div className="form-row">
+            <div style={{ padding: "0.5rem 0.75rem", background: "#fef3c7", borderRadius: "6px", color: "#92400e", fontSize: "0.875rem" }}>
+              {validationError}
+            </div>
+          </div>
+        )}
         <div className="form-row">
           <button onClick={runDebate} disabled={loading}>
             {loading ? (
