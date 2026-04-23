@@ -1,6 +1,6 @@
-# AI Political Agents Project
+# AgonAI - Political Agent Debate Lab
 
-A system for simulating political debates and negotiations between AI agents modeled after historical figures with opposing ideologies.
+A system for simulating political debates and negotiations between AI agents modeled after historical figures with opposing ideologies. Built with Next.js and TypeScript.
 
 ## Research Question
 Can political AI agents of historical figures who opposed each other reach a consensus in a simulated setting?
@@ -12,64 +12,92 @@ Can political AI agents of historical figures who opposed each other reach a con
 - **Winston Churchill vs Karl Marx vs Niccolò Machiavelli**: Different political ideologies
 
 ## Key Features
-- Historical figure personality modeling
-- Multi-agent debate system
-- Consensus detection and analysis
-- Real-time negotiation simulation
-- Optional Ollama LLM integration (local)
-- Minimal FastAPI web UI
+- Historical figure personality modeling (OCEAN traits, ideology compatibility)
+- Multi-agent debate simulation with consensus detection
+- Policy scoring across political, economic, and social dimensions
+- Empathy-weighted negotiation and fatigue modeling
+- 8 pre-configured experiments (rational vs empathetic, historical conflicts, etc.)
+- xAI (Grok) API integration for LLM-powered dialogue
+- Interactive web UI with chat-style debate visualization
 
 ## Project Structure
 ```
-├── agents/           # Historical figure AI agents
-├── debates/          # Debate simulation system
-├── frontend/         # FastAPI + HTML minimal frontend
-├── utils/            # Utilities (Ollama client)
-├── consensus/        # Consensus detection algorithms
-├── data/             # Historical data and context
-└── examples/         # Example scenarios and outputs
+├── app/              # Next.js app (pages + API routes)
+│   ├── page.tsx      # Main UI (React)
+│   ├── api/
+│   │   ├── chat/     # POST /api/chat — xAI chat wrapper
+│   │   ├── simulate/ # POST /api/simulate — debate runner
+│   │   └── experiment/ # POST /api/experiment — experiment runner
+│   └── globals.css
+├── lib/              # Core TypeScript library
+│   ├── agents/       # Historical figure AI agents
+│   ├── debates/      # Debate simulator + experiment runner
+│   ├── scoring/      # Policy scoring system
+│   └── utils/        # xAI client, memory, conversation state
+└── .env.example      # Environment variables
 ```
 
-## Quick Start (CLI)
+## Quick Start
+
 ```bash
-python3 main.py --agents hitler gandhi jinnah --topic territorial_disputes --rounds 10 --format json --summary-only
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env.local
+# Edit .env.local with your XAI_API_KEY
+
+# Run development server
+npm run dev
 ```
 
-## Optional: Use Ollama for LLM Responses
-- Install Ollama: see `https://ollama.com`
-- Start server (macOS): `ollama serve`
-- Pull a model (example): `ollama pull llama3.1:8b`
-- Configure (optional):
-  - `export OLLAMA_BASE_URL=http://localhost:11434`
-  - `export OLLAMA_MODEL=llama3.1:8b`
-- In FastAPI UI, check "Use Ollama" and optionally set base URL/model.
+Then open `http://localhost:3000`.
 
-## Chat API (Serverless)
-- Vercel route: `POST /api/chat`
-- Required env: `GEMINI_API_KEY`
-- Optional env: `GEMINI_MODEL` (default `gemini-2.0-flash`), `GEMINI_BASE_URL`
-- Optional tuning:
-  - `CHAT_CACHE_TTL_S` (default 120 seconds)
-  - `CHAT_CACHE_MAX_ITEMS` (default 256)
+## Environment Variables
+- `XAI_API_KEY` (required) — xAI API key for Grok LLM
+- `XAI_MODEL` (default `grok-3-mini`) — model to use
+- `XAI_BASE_URL` (default `https://api.x.ai/v1`)
+- `CHAT_CACHE_TTL_S` (default `120`) — chat response cache TTL
+- `CHAT_CACHE_MAX_ITEMS` (default `256`) — max cached responses
+- `SUPERMEMORY_API_KEY`, `SUPERMEMORY_BASE_URL` — optional memory service
+- `EXA_API_KEY`, `EXA_BASE_URL` — optional context search
 
-## Conversation Memory (Chat Continuity)
-- The simulator keeps a short-term memory window (default: 8 turns) plus a rolling summary.
-- It tracks salient user preferences, open loops, and consensus metrics to keep replies coherent.
-- Tuning knobs (see `utils/conversation_state.py`):
-  - `memory_window` (default 8)
-  - `compromise_threshold` (default 0.7)
-  - `weights` for consensus scoring
+## API Endpoints
 
-## Run Local Frontend (FastAPI)
-```bash
-uvicorn frontend.server:app --reload
+### POST /api/simulate
+Run a debate simulation.
+```json
+{
+  "agents": ["hitler", "gandhi", "jinnah"],
+  "topic": "territorial disputes",
+  "rounds": 12
+}
 ```
-Then open `http://127.0.0.1:8000`.
 
-## Streamlit UI (Alternative)
+### POST /api/chat
+Single-message chat with xAI.
+```json
+{
+  "messages": [{"role": "user", "content": "Hello"}],
+  "temperature": 0.2,
+  "max_tokens": 512
+}
+```
+
+### POST /api/experiment
+Run a pre-configured experiment (1-8).
+```json
+{
+  "experimentId": 3,
+  "topic": "war",
+  "maxRounds": 15,
+  "historicalAgents": ["hitler", "gandhi"]
+}
+```
+
+## Deploy to Vercel
 ```bash
-pip3 install -r requirements.txt
-streamlit run web_app.py
+vercel
 ```
 
 ## License

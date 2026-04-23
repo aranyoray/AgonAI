@@ -1,6 +1,20 @@
 # AgonAI
 
 Multi-agent debate simulation system modeling historical political figures.
+Built with Next.js 16, TypeScript, and React. Uses xAI (Grok) API for LLM.
+
+## Stack
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **LLM**: xAI (Grok) via REST API
+- **Deploy**: Vercel
+
+## Structure
+- `app/` — Next.js pages and API routes
+- `lib/agents/` — Agent classes (base, historical, baseline, judge)
+- `lib/debates/` — Debate simulator and experiment runner
+- `lib/scoring/` — Policy scoring (OCEAN, benefit-cost, empathy)
+- `lib/utils/` — xAI client, memory clients, conversation state
 
 ## Skill routing
 
